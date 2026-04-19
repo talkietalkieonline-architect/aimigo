@@ -29,7 +29,7 @@ export default function ChatArea() {
 
   return (
     <div
-      className="absolute inset-0 flex flex-col justify-end px-4 pb-24 pt-20 overflow-y-auto"
+      className="absolute inset-0 flex flex-col justify-end px-4 pb-36 pt-20 overflow-y-auto"
       style={{ zIndex: 10 }}
     >
       <div className="flex flex-col gap-3 max-w-2xl mx-auto w-full">

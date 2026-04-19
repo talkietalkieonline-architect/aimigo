@@ -1,5 +1,7 @@
 "use client";
 import { useState, useCallback } from "react";
+import SplashScreen from "@/components/auth/SplashScreen";
+import LoginScreen from "@/components/auth/LoginScreen";
 import Particles from "@/components/communicator/Particles";
 import TopBar from "@/components/communicator/TopBar";
 import BottomBar from "@/components/communicator/BottomBar";
@@ -9,7 +11,10 @@ import LeftPanel from "@/components/communicator/LeftPanel";
 import RightPanel from "@/components/communicator/RightPanel";
 import SettingsModal from "@/components/communicator/SettingsModal";
 
+type AppScreen = "splash" | "login" | "communicator";
+
 export default function Home() {
+  const [screen, setScreen] = useState<AppScreen>("splash");
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -19,6 +24,17 @@ export default function Home() {
   const closeLeft = useCallback(() => setLeftOpen(false), []);
   const closeRight = useCallback(() => setRightOpen(false), []);
 
+  // Заставка
+  if (screen === "splash") {
+    return <SplashScreen onFinish={() => setScreen("login")} />;
+  }
+
+  // Экран входа
+  if (screen === "login") {
+    return <LoginScreen onLogin={() => setScreen("communicator")} />;
+  }
+
+  // Коммуникатор
   return (
     <div className="relative w-full h-screen overflow-hidden">
       {/* Фоновые частицы */}
