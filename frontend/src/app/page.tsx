@@ -10,6 +10,7 @@ import SideTab from "@/components/communicator/SideTab";
 import LeftPanel from "@/components/communicator/LeftPanel";
 import RightPanel from "@/components/communicator/RightPanel";
 import SettingsModal from "@/components/communicator/SettingsModal";
+import MyAgentsModal from "@/components/communicator/MyAgentsModal";
 
 type AppScreen = "splash" | "login" | "communicator";
 
@@ -18,6 +19,7 @@ export default function Home() {
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [agentsOpen, setAgentsOpen] = useState(false);
   const [activeMode, setActiveMode] = useState("Общение");
   const [activeRoom, setActiveRoom] = useState("Общая комната");
 
@@ -67,13 +69,20 @@ export default function Home() {
       <BottomBar
         onSettingsClick={() => setSettingsOpen(true)}
         onContactsClick={() => alert("Мои контакты — в разработке")}
-        onAgentsClick={() => alert("Мои агенты — в разработке")}
+        onAgentsClick={() => setAgentsOpen(true)}
       />
 
       {/* Центр Управления */}
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+
+      {/* Мои агенты */}
+      <MyAgentsModal
+        isOpen={agentsOpen}
+        onClose={() => setAgentsOpen(false)}
+        onOpenCity={() => alert("Город Агентов — следующий шаг")}
       />
     </div>
   );
