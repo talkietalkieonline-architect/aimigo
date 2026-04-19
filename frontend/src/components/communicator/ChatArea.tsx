@@ -77,9 +77,13 @@ function VoiceWave({ text }: { text: string }) {
 export default function ChatArea({
   messages,
   isTyping,
+  topPad = 80,
+  bottomPad = 130,
 }: {
   messages: ChatMessage[];
   isTyping: boolean;
+  topPad?: number;
+  bottomPad?: number;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -95,7 +99,7 @@ export default function ChatArea({
   return (
     <div
       className="absolute inset-0 flex flex-col"
-      style={{ zIndex: 10, paddingTop: "80px", paddingBottom: "130px" }}
+      style={{ zIndex: 10, paddingTop: topPad + "px", paddingBottom: bottomPad + "px" }}
     >
       <div
         ref={scrollRef}

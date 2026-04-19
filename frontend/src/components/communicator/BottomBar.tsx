@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 /** Нижняя панель — поле ввода + 5 кнопок */
 export default function BottomBar({
@@ -8,18 +8,32 @@ export default function BottomBar({
   onAgentsClick,
   onSendMessage,
   onAttachMedia,
+  onHeightChange,
 }: {
   onSettingsClick: () => void;
   onContactsClick: () => void;
   onAgentsClick: () => void;
   onSendMessage: (text: string) => void;
   onAttachMedia: (file: File) => void;
+  onHeightChange?: (h: number) => void;
 }) {
   const [micOn, setMicOn] = useState(false);
   const [muteOn, setMuteOn] = useState(false);
   const [inputText, setInputText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+
+  // Сообщаем родителю свою высоту
+  useEffect(() => {
+    if (!barRef.current || !onHeightChange) return;
+    const ro = new ResizeObserver(() => {
+      if (barRef.current) onHeightChange(barRef.current.offsetHeight);
+    });
+    ro.observe(barRef.current);
+    onHeightChange(barRef.current.offsetHeight);
+    return () => ro.disconnect();
+  }, [onHeightChange]);
 
   const handleSend = () => {
     const text = inputText.trim();
@@ -38,6 +52,7 @@ export default function BottomBar({
 
   return (
     <div
+      ref={barRef}
       className="fixed bottom-0 left-0 right-0 flex flex-col"
       style={{
         background: "var(--bar-bg)",

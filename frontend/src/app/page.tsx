@@ -65,6 +65,8 @@ export default function Home() {
   const [contactsOpen, setContactsOpen] = useState(false);
   const [activeMode, setActiveMode] = useState("Общение");
   const [activeRoom, setActiveRoom] = useState("Общая комната");
+  const [topBarH, setTopBarH] = useState(80);
+  const [bottomBarH, setBottomBarH] = useState(130);
 
   // Чат — стейт и логика
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
@@ -142,7 +144,7 @@ export default function Home() {
       <Particles />
 
       {/* Верхняя панель */}
-      <TopBar tickerActive={true} />
+      <TopBar tickerActive={true} onHeightChange={setTopBarH} />
 
       {/* Боковые язычки */}
       <SideTab side="left" onClick={() => setLeftOpen(!leftOpen)} />
@@ -162,7 +164,7 @@ export default function Home() {
       <RightPanel isOpen={rightOpen} onClose={closeRight} />
 
       {/* Центральная область чата */}
-      <ChatArea messages={messages} isTyping={isTyping} />
+      <ChatArea messages={messages} isTyping={isTyping} topPad={topBarH} bottomPad={bottomBarH} />
 
       {/* Нижняя панель — ввод + кнопки */}
       <BottomBar
@@ -171,6 +173,7 @@ export default function Home() {
         onAgentsClick={() => setAgentsOpen(true)}
         onSendMessage={handleSendMessage}
         onAttachMedia={handleAttachMedia}
+        onHeightChange={setBottomBarH}
       />
 
       {/* Центр Управления */}

@@ -1,9 +1,23 @@
 "use client";
+import { useRef, useEffect } from "react";
 
 /** Верхняя панель — лого + ЭФИР */
-export default function TopBar({ tickerActive }: { tickerActive: boolean }) {
+export default function TopBar({ tickerActive, onHeightChange }: { tickerActive: boolean; onHeightChange?: (h: number) => void }) {
+  const barRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!barRef.current || !onHeightChange) return;
+    const ro = new ResizeObserver(() => {
+      if (barRef.current) onHeightChange(barRef.current.offsetHeight);
+    });
+    ro.observe(barRef.current);
+    onHeightChange(barRef.current.offsetHeight);
+    return () => ro.disconnect();
+  }, [onHeightChange]);
+
   return (
     <div
+      ref={barRef}
       className="fixed top-0 left-0 right-0 px-4 pt-3 pb-2"
       style={{ zIndex: 50, background: "var(--bar-bg)" }}
     >
