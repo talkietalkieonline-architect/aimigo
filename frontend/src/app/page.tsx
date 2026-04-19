@@ -42,6 +42,19 @@ const INITIAL_MESSAGES: ChatMessage[] = [
   },
 ];
 
+/** Проверка сохранённой сессии */
+function hasValidSession(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const raw = localStorage.getItem("aimigo_session");
+    if (raw) {
+      const session = JSON.parse(raw);
+      return session.loggedIn && session.expires > Date.now();
+    }
+  } catch {}
+  return false;
+}
+
 export default function Home() {
   const [screen, setScreen] = useState<AppScreen>("splash");
   const [leftOpen, setLeftOpen] = useState(false);
@@ -90,9 +103,12 @@ export default function Home() {
     }, delay);
   }, []);
 
-  // Заставка
+  // Заставка — после неё проверяем сессию
+  // Если сессия есть — сразу в коммуникатор (как ChatGPT)
   if (screen === "splash") {
-    return <SplashScreen onFinish={() => setScreen("login")} />;
+    return <SplashScreen onFinish={() => {
+      setScreen(hasValidSession() ? "communicator" : "login");
+    }} />;
   }
 
   // Экран входа

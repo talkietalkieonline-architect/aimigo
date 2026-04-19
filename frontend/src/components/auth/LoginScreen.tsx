@@ -1,52 +1,126 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
-type AuthStep = "phone" | "sms" | "password-create" | "login";
+type AuthStep = "phone" | "sms";
+
+/**
+ * Форматирование 10 цифр в маску: (999) 123-45-67
+ */
+function formatPhone(digits: string): string {
+  const d = digits.slice(0, 10);
+  let result = "";
+  if (d.length > 0) result += "(" + d.slice(0, 3);
+  if (d.length >= 3) result += ") ";
+  if (d.length > 3) result += d.slice(3, 6);
+  if (d.length > 6) result += "-" + d.slice(6, 8);
+  if (d.length > 8) result += "-" + d.slice(8, 10);
+  return result;
+}
+
+/**
+ * Извлечь только цифры из строки
+ */
+function onlyDigits(s: string): string {
+  return s.replace(/\D/g, "");
+}
 
 export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const [step, setStep] = useState<AuthStep>("phone");
-  const [phone, setPhone] = useState("");
+  const [digits, setDigits] = useState(""); // 10 цифр без +7
   const [smsCode, setSmsCode] = useState("");
-  const [password, setPassword] = useState("");
-  const [isNewUser, setIsNewUser] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const [countdown, setCountdown] = useState(0);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+  const smsInputRef = useRef<HTMLInputElement>(null);
 
-  const handlePhoneSubmit = () => {
-    if (phone.length < 10) return;
-    // TODO: проверка на сервере — новый или существующий пользователь
-    // Пока имитируем: если номер начинается с +7999 — новый, иначе — существующий
-    if (phone.startsWith("+7999") || phone.startsWith("7999") || phone.startsWith("8999")) {
-      setIsNewUser(true);
-      setStep("sms");
-    } else {
-      setIsNewUser(false);
-      setStep("login");
+  // Подтягиваем сохранённый номер при открытии
+  useEffect(() => {
+    const saved = localStorage.getItem("aimigo_phone");
+    if (saved) {
+      setDigits(onlyDigits(saved).slice(0, 10));
     }
+  }, []);
+
+  // Таймер обратного отсчёта для повторной отправки
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const t = setTimeout(() => setCountdown(countdown - 1), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
+
+  // Автофокус на поле SMS
+  useEffect(() => {
+    if (step === "sms") {
+      setTimeout(() => smsInputRef.current?.focus(), 100);
+    }
+  }, [step]);
+
+  const fullPhone = "+7" + digits;
+  const isPhoneComplete = digits.length === 10;
+
+  const handlePhoneInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Извлекаем только цифры, макс 10
+    const raw = onlyDigits(e.target.value);
+    setDigits(raw.slice(0, 10));
+    setError("");
   };
 
-  const handleSmsSubmit = () => {
-    if (smsCode.length < 4) return;
-    setStep("password-create");
+  const handleSendSMS = () => {
+    if (!isPhoneComplete) return;
+    setError("");
+    setSending(true);
+
+    // Сохраняем номер
+    localStorage.setItem("aimigo_phone", digits);
+
+    // Генерируем 4-значный код (MVP — показываем пользователю)
+    const code = String(Math.floor(1000 + Math.random() * 9000));
+    setGeneratedCode(code);
+
+    // Имитация отправки
+    setTimeout(() => {
+      setSending(false);
+      setSmsCode(code); // Автоподстановка кода (как будто пришло SMS)
+      setStep("sms");
+      setCountdown(60);
+    }, 800);
   };
 
-  const handleCreatePassword = () => {
-    if (password.length < 4) return;
-    // TODO: отправка на сервер
+  const handleVerifyAndLogin = () => {
+    if (smsCode.length < 4) {
+      setError("Введите 4-значный код");
+      return;
+    }
+    if (smsCode !== generatedCode) {
+      setError("Неверный код");
+      return;
+    }
+
+    // Сохраняем сессию (30 дней)
+    const session = {
+      phone: fullPhone,
+      loggedIn: true,
+      expires: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    };
+    localStorage.setItem("aimigo_session", JSON.stringify(session));
+    localStorage.setItem("aimigo_phone", digits);
+
     onLogin();
   };
 
-  const handleLogin = () => {
-    if (password.length < 4) return;
-    // TODO: проверка на сервере
-    onLogin();
+  const handleKeyDown = (e: React.KeyboardEvent, action: () => void) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      action();
+    }
   };
 
   return (
     <div
       className="fixed inset-0 flex items-center justify-center p-6"
-      style={{
-        background: "var(--bg-deep)",
-        zIndex: 150,
-      }}
+      style={{ background: "var(--bg-deep)", zIndex: 150 }}
     >
       {/* Свечение */}
       <div
@@ -77,160 +151,150 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
           </span>
         </div>
 
-        {/* Шаг 1: Ввод телефона */}
+        {/* === Шаг 1: Номер телефона === */}
         {step === "phone" && (
           <div className="flex flex-col gap-4">
             <p className="text-center text-sm" style={{ color: "var(--text-secondary)" }}>
-              Введите номер телефона
+              Войдите по номеру телефона
             </p>
-            <input
-              type="tel"
-              placeholder="+7 (___) ___-__-__"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-4 py-3.5 rounded-xl text-center text-lg outline-none transition-all"
+
+            {/* Поле телефона с зашитым +7 */}
+            <div
+              className="flex items-center rounded-xl overflow-hidden transition-all"
               style={{
                 background: "var(--bg-glass)",
                 border: "1px solid var(--bg-glass-border)",
-                color: "var(--text-primary)",
               }}
-              onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
-              onBlur={(e) => (e.target.style.borderColor = "var(--bg-glass-border)")}
-              autoFocus
-            />
+              onClick={() => phoneInputRef.current?.focus()}
+            >
+              {/* Флаг + код страны */}
+              <div
+                className="flex items-center gap-1.5 pl-4 pr-2 py-3.5 shrink-0"
+                style={{ color: "var(--text-primary)" }}
+              >
+                <span className="text-lg">🇷🇺</span>
+                <span className="text-base font-medium">+7</span>
+              </div>
+
+              {/* Поле ввода — только цифры */}
+              <input
+                ref={phoneInputRef}
+                type="tel"
+                inputMode="numeric"
+                placeholder="(___) ___-__-__"
+                value={formatPhone(digits)}
+                onChange={handlePhoneInput}
+                onKeyDown={(e) => handleKeyDown(e, handleSendSMS)}
+                className="flex-1 py-3.5 pr-4 bg-transparent outline-none text-base"
+                style={{
+                  color: "var(--text-primary)",
+                  caretColor: "var(--accent)",
+                }}
+                autoFocus
+              />
+            </div>
+
             <button
-              onClick={handlePhoneSubmit}
+              onClick={handleSendSMS}
+              disabled={!isPhoneComplete || sending}
               className="w-full py-3.5 rounded-xl text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
               style={{
-                background: "var(--accent)",
-                color: "var(--bg-deep)",
+                background: isPhoneComplete ? "var(--accent)" : "var(--bg-glass-border)",
+                color: isPhoneComplete ? "var(--bg-deep)" : "var(--text-muted)",
+                cursor: isPhoneComplete ? "pointer" : "default",
               }}
             >
-              Продолжить
+              {sending ? "Отправка..." : "Получить код"}
             </button>
           </div>
         )}
 
-        {/* Шаг 2: SMS-код (только для новых) */}
+        {/* === Шаг 2: SMS-код === */}
         {step === "sms" && (
           <div className="flex flex-col gap-4">
             <p className="text-center text-sm" style={{ color: "var(--text-secondary)" }}>
-              Код из SMS отправлен на {phone}
+              Код отправлен на
             </p>
+            <div
+              className="text-center text-sm py-1.5 rounded-lg"
+              style={{ color: "var(--accent)" }}
+            >
+              +7 {formatPhone(digits)}
+            </div>
+
+            {/* 4 цифры кода */}
             <input
+              ref={smsInputRef}
               type="text"
-              placeholder="Код из SMS"
-              maxLength={6}
+              inputMode="numeric"
+              placeholder="• • • •"
+              maxLength={4}
               value={smsCode}
-              onChange={(e) => setSmsCode(e.target.value)}
+              onChange={(e) => {
+                setSmsCode(onlyDigits(e.target.value).slice(0, 4));
+                setError("");
+              }}
+              onKeyDown={(e) => handleKeyDown(e, handleVerifyAndLogin)}
               className="w-full px-4 py-3.5 rounded-xl text-center text-2xl tracking-[0.5em] outline-none transition-all"
               style={{
                 background: "var(--bg-glass)",
-                border: "1px solid var(--bg-glass-border)",
+                border: error
+                  ? "1px solid var(--danger)"
+                  : "1px solid var(--bg-glass-border)",
                 color: "var(--text-primary)",
               }}
-              onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
-              onBlur={(e) => (e.target.style.borderColor = "var(--bg-glass-border)")}
-              autoFocus
             />
-            <button
-              onClick={handleSmsSubmit}
-              className="w-full py-3.5 rounded-xl text-sm font-semibold transition-all hover:scale-[1.02]"
-              style={{
-                background: "var(--accent)",
-                color: "var(--bg-deep)",
-              }}
-            >
-              Подтвердить
-            </button>
-            <button
-              onClick={() => setStep("phone")}
-              className="text-xs text-center"
+
+            {/* Ошибка */}
+            {error && (
+              <p className="text-center text-xs" style={{ color: "var(--danger)" }}>
+                {error}
+              </p>
+            )}
+
+            {/* Подсказка для MVP */}
+            <p
+              className="text-center text-[11px]"
               style={{ color: "var(--text-muted)" }}
             >
-              ← Изменить номер
-            </button>
-          </div>
-        )}
-
-        {/* Шаг 3: Создание пароля (новый пользователь) */}
-        {step === "password-create" && (
-          <div className="flex flex-col gap-4">
-            <p className="text-center text-sm" style={{ color: "var(--text-secondary)" }}>
-              Создайте пароль для входа
+              MVP: код подставлен автоматически
             </p>
-            <input
-              type="password"
-              placeholder="Придумайте пароль"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3.5 rounded-xl text-center outline-none transition-all"
-              style={{
-                background: "var(--bg-glass)",
-                border: "1px solid var(--bg-glass-border)",
-                color: "var(--text-primary)",
-              }}
-              onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
-              onBlur={(e) => (e.target.style.borderColor = "var(--bg-glass-border)")}
-              autoFocus
-            />
-            <button
-              onClick={handleCreatePassword}
-              className="w-full py-3.5 rounded-xl text-sm font-semibold transition-all hover:scale-[1.02]"
-              style={{
-                background: "var(--accent)",
-                color: "var(--bg-deep)",
-              }}
-            >
-              Войти в Aimigo
-            </button>
-          </div>
-        )}
 
-        {/* Шаг 4: Вход (существующий пользователь) */}
-        {step === "login" && (
-          <div className="flex flex-col gap-4">
-            <p className="text-center text-sm" style={{ color: "var(--text-secondary)" }}>
-              С возвращением! Введите пароль
-            </p>
-            <div
-              className="text-center text-sm py-2 rounded-lg"
-              style={{ color: "var(--accent)", background: "var(--bg-glass)" }}
-            >
-              {phone}
-            </div>
-            <input
-              type="password"
-              placeholder="Пароль"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3.5 rounded-xl text-center outline-none transition-all"
-              style={{
-                background: "var(--bg-glass)",
-                border: "1px solid var(--bg-glass-border)",
-                color: "var(--text-primary)",
-              }}
-              onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
-              onBlur={(e) => (e.target.style.borderColor = "var(--bg-glass-border)")}
-              autoFocus
-            />
             <button
-              onClick={handleLogin}
-              className="w-full py-3.5 rounded-xl text-sm font-semibold transition-all hover:scale-[1.02]"
+              onClick={handleVerifyAndLogin}
+              className="w-full py-3.5 rounded-xl text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
               style={{
-                background: "var(--accent)",
-                color: "var(--bg-deep)",
+                background: smsCode.length === 4 ? "var(--accent)" : "var(--bg-glass-border)",
+                color: smsCode.length === 4 ? "var(--bg-deep)" : "var(--text-muted)",
+                cursor: smsCode.length === 4 ? "pointer" : "default",
               }}
             >
               Войти
             </button>
-            <button
-              onClick={() => setStep("phone")}
-              className="text-xs text-center"
-              style={{ color: "var(--text-muted)" }}
-            >
-              ← Другой номер
-            </button>
+
+            {/* Повторная отправка */}
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={() => { setStep("phone"); setSmsCode(""); setError(""); }}
+                className="text-xs"
+                style={{ color: "var(--text-muted)" }}
+              >
+                ← Другой номер
+              </button>
+              {countdown > 0 ? (
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  Повтор через {countdown}с
+                </span>
+              ) : (
+                <button
+                  onClick={handleSendSMS}
+                  className="text-xs"
+                  style={{ color: "var(--accent)" }}
+                >
+                  Отправить снова
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
