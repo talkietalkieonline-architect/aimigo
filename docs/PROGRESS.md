@@ -42,12 +42,37 @@
 - [x] Связь Мои Агенты → Город Агентов (переход по кнопке)
 - [x] CSS-анимации: fade-in сообщений, typing dots, marquee (ЭФИР)
 
-### Что следующее (Сессия 3)
-1. Подключение FastAPI к PostgreSQL
-2. API авторизации (телефон + SMS + пароль)
-3. WebSocket для реалтайм чата
-4. API агентов (каталог, CRUD)
-5. Подключение фронта к бэкенду
+### Сессия 3 (Июнь 2025)
+- [x] FastAPI + PostgreSQL (async SQLAlchemy, auto-create tables)
+- [x] Модели БД: User, Agent, Message
+- [x] API авторизации: send-sms, verify-sms, set-password, login (JWT, bcrypt)
+- [x] API агентов: каталог с поиском, фильтрами, счётчиками
+- [x] API чата: история + отправка сообщений
+- [x] API пользователя: профиль, обновление настроек
+- [x] WebSocket чат по комнатам (ConnectionManager + JWT аутентификация)
+- [x] Seed-скрипт: 14 начальных агентов (системные + бизнес + жители)
+- [x] Фикс размера чата — поле ввода перенесено в BottomBar
+
+### API Эндпоинты (16 роутов)
+- `POST /api/auth/send-sms` — отправка SMS-кода
+- `POST /api/auth/verify-sms` — проверка кода
+- `POST /api/auth/set-password` — установка пароля (регистрация)
+- `POST /api/auth/login` — вход (телефон + пароль)
+- `GET /api/agents` — каталог агентов
+- `GET /api/agents/{id}` — карточка агента
+- `GET /api/chat/history` — история сообщений
+- `POST /api/chat/send` — отправка сообщения
+- `GET /api/users/me` — профиль
+- `PATCH /api/users/me` — обновление настроек
+- `WS /ws/chat/{room}` — реалтайм чат
+- `GET /api/health` — здоровье сервиса
+
+### Что следующее (Сессия 4)
+1. Подключение фронта к бэкенду (fetch + WebSocket)
+2. Реальная авторизация на фронте (телефон + SMS + пароль → API)
+3. Город Агентов на фронте → данные из API
+4. Реалтайм чат через WebSocket
+5. Docker Compose (бэкенд + PostgreSQL + Redis)
 
 ---
 
