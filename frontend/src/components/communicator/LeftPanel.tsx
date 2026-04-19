@@ -57,7 +57,7 @@ export default function LeftPanel({
   return (
     <div
       ref={panelRef}
-      className="fixed top-0 left-0 bottom-0 w-64 p-4 pt-20 overflow-y-auto"
+      className="fixed top-0 left-0 bottom-0 w-44 p-3 pt-20 overflow-y-auto"
       style={{
         background: "var(--panel-bg)",
         borderRight: "1px solid var(--panel-border)",

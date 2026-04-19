@@ -7,16 +7,19 @@ export default function BottomBar({
   onContactsClick,
   onAgentsClick,
   onSendMessage,
+  onAttachMedia,
 }: {
   onSettingsClick: () => void;
   onContactsClick: () => void;
   onAgentsClick: () => void;
   onSendMessage: (text: string) => void;
+  onAttachMedia: (file: File) => void;
 }) {
   const [micOn, setMicOn] = useState(false);
   const [muteOn, setMuteOn] = useState(false);
   const [inputText, setInputText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const handleSend = () => {
     const text = inputText.trim();
@@ -51,6 +54,31 @@ export default function BottomBar({
             border: "1px solid var(--bg-glass-border)",
           }}
         >
+          {/* Скрепка — прикрепить медиа */}
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="w-8 h-8 flex items-center justify-center shrink-0 transition-all hover:scale-110 active:scale-95 rounded-full"
+            style={{ color: "var(--text-muted)" }}
+            title="Прикрепить фото / видео"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+            </svg>
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*,video/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                onAttachMedia(file);
+                e.target.value = "";
+              }
+            }}
+          />
+
           <input
             ref={inputRef}
             type="text"

@@ -74,18 +74,7 @@ export default function Home() {
   const closeLeft = useCallback(() => setLeftOpen(false), []);
   const closeRight = useCallback(() => setRightOpen(false), []);
 
-  const handleSendMessage = useCallback((text: string) => {
-    const userMsg: ChatMessage = {
-      id: String(msgCounter.current++),
-      sender: "user",
-      name: "",
-      text,
-      color: "",
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
-
-    // Имитация ответа Дворецкого
+  const butlerReply = useCallback(() => {
     setIsTyping(true);
     const delay = 800 + Math.random() * 1500;
     setTimeout(() => {
@@ -102,6 +91,36 @@ export default function Home() {
       setMessages((prev) => [...prev, butlerMsg]);
     }, delay);
   }, []);
+
+  const handleSendMessage = useCallback((text: string) => {
+    const userMsg: ChatMessage = {
+      id: String(msgCounter.current++),
+      sender: "user",
+      name: "",
+      text,
+      color: "",
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    butlerReply();
+  }, [butlerReply]);
+
+  const handleAttachMedia = useCallback((file: File) => {
+    const url = URL.createObjectURL(file);
+    const isVideo = file.type.startsWith("video/");
+    const mediaMsg: ChatMessage = {
+      id: String(msgCounter.current++),
+      sender: "user",
+      name: "",
+      text: "",
+      color: "",
+      timestamp: new Date(),
+      mediaUrl: url,
+      mediaType: isVideo ? "video" : "image",
+    };
+    setMessages((prev) => [...prev, mediaMsg]);
+    butlerReply();
+  }, [butlerReply]);
 
   // Заставка — после неё проверяем сессию
   // Если сессия есть — сразу в коммуникатор (как ChatGPT)
@@ -151,6 +170,7 @@ export default function Home() {
         onContactsClick={() => setContactsOpen(true)}
         onAgentsClick={() => setAgentsOpen(true)}
         onSendMessage={handleSendMessage}
+        onAttachMedia={handleAttachMedia}
       />
 
       {/* Центр Управления */}
