@@ -47,9 +47,9 @@ export default function ChatArea({
                 <div
                   className="w-8 h-8 rounded-full shrink-0 mr-2 mt-1 flex items-center justify-center text-[10px] font-bold"
                   style={{
-                    background: `${msg.color}22`,
-                    border: `1.5px solid ${msg.color}44`,
-                    color: msg.color,
+                    background: "rgba(212, 168, 67, 0.12)",
+                    border: "1.5px solid rgba(212, 168, 67, 0.3)",
+                    color: "var(--accent)",
                   }}
                 >
                   {msg.name[0]}
@@ -91,8 +91,8 @@ export default function ChatArea({
               <div
                 className="w-8 h-8 rounded-full shrink-0 mr-2 mt-1 flex items-center justify-center text-[10px] font-bold"
                 style={{
-                  background: "var(--accent)22",
-                  border: "1.5px solid var(--accent)44",
+                  background: "rgba(212, 168, 67, 0.12)",
+                  border: "1.5px solid rgba(212, 168, 67, 0.3)",
                   color: "var(--accent)",
                 }}
               >

@@ -43,9 +43,9 @@ export default function BottomBar({
       }}
     >
       {/* Поле ввода сообщения */}
-      <div className="px-4 pt-2.5 pb-1.5">
+      <div className="px-5 pt-2.5 pb-1.5">
         <div
-          className="flex items-center gap-2 rounded-2xl px-4 py-2 max-w-2xl mx-auto"
+          className="flex items-center gap-2 rounded-2xl px-4 py-2.5 max-w-2xl mx-auto w-full"
           style={{
             background: "var(--bg-glass)",
             border: "1px solid var(--bg-glass-border)",

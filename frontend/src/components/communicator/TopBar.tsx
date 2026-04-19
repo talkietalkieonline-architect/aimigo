@@ -5,7 +5,7 @@ export default function TopBar({ tickerActive }: { tickerActive: boolean }) {
   return (
     <div
       className="fixed top-0 left-0 right-0 px-4 pt-3 pb-2"
-      style={{ zIndex: 50 }}
+      style={{ zIndex: 50, background: "var(--bar-bg)" }}
     >
       {/* Лого */}
       <div className="flex items-baseline gap-3 mb-1">
@@ -38,12 +38,12 @@ export default function TopBar({ tickerActive }: { tickerActive: boolean }) {
           >
             Эфир
           </span>
-          <div className="overflow-hidden flex-1">
+          <div className="overflow-hidden flex-1 relative">
             <div
-              className="whitespace-nowrap animate-marquee"
+              className="whitespace-nowrap ticker-scroll"
               style={{ color: "var(--text-secondary)", fontSize: "13px" }}
             >
-              Пробки: КАД у Мурино — задержка до 18 мин &bull; Погода: до +6°, к вечеру слабый снег &bull; МЧС: учения на набережной завершены, проезд свободен &bull; Спортмастер: -20% на термобельё
+              Пробки: КАД у Мурино — задержка до 18 мин &nbsp;•&nbsp; Погода: до +6°, к вечеру слабый снег &nbsp;•&nbsp; МЧС: учения на набережной завершены, проезд свободен &nbsp;•&nbsp; Спортмастер: -20% на термобельё &nbsp;•&nbsp; Aimigo: новые агенты в Городе!
             </div>
           </div>
         </div>
