@@ -1,11 +1,12 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import SplashScreen from "@/components/auth/SplashScreen";
 import LoginScreen from "@/components/auth/LoginScreen";
 import Particles from "@/components/communicator/Particles";
 import TopBar from "@/components/communicator/TopBar";
 import BottomBar from "@/components/communicator/BottomBar";
 import ChatArea from "@/components/communicator/ChatArea";
+import type { ChatMessage } from "@/components/communicator/ChatArea";
 import SideTab from "@/components/communicator/SideTab";
 import LeftPanel from "@/components/communicator/LeftPanel";
 import RightPanel from "@/components/communicator/RightPanel";
@@ -15,6 +16,31 @@ import AgentCityModal from "@/components/communicator/AgentCityModal";
 import ContactsModal from "@/components/communicator/ContactsModal";
 
 type AppScreen = "splash" | "login" | "communicator";
+
+// Ответы Дворецкого (демо)
+const BUTLER_REPLIES = [
+  "Отличный вопрос! Давайте разберёмся вместе.",
+  "Я всегда рад помочь. Что именно вас интересует?",
+  "Хороший выбор! Могу подсказать ещё несколько вариантов.",
+  "Записал. Напомню когда потребуется!",
+  "Сейчас посмотрю в Городе Агентов, есть ли подходящий специалист.",
+  "Между прочим, сегодня в Эфире много интересного — обратите внимание на бегущую строку.",
+  "Я рядом, если что — обращайтесь в любой момент.",
+  "Могу найти агента-консультанта по этой теме. Хотите?",
+  "Это интересно! Расскажите подробнее.",
+  "Принято! Работаю над этим.",
+];
+
+const INITIAL_MESSAGES: ChatMessage[] = [
+  {
+    id: "1",
+    sender: "butler",
+    name: "Дворецкий",
+    text: "Добро пожаловать в Aimigo! Я ваш Дворецкий. Могу рассказать о сервисе, найти нужного агента или просто поболтать.",
+    color: "var(--accent)",
+    timestamp: new Date(),
+  },
+];
 
 export default function Home() {
   const [screen, setScreen] = useState<AppScreen>("splash");
@@ -27,8 +53,42 @@ export default function Home() {
   const [activeMode, setActiveMode] = useState("Общение");
   const [activeRoom, setActiveRoom] = useState("Общая комната");
 
+  // Чат — стейт и логика
+  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
+  const [isTyping, setIsTyping] = useState(false);
+  const msgCounter = useRef(2);
+
   const closeLeft = useCallback(() => setLeftOpen(false), []);
   const closeRight = useCallback(() => setRightOpen(false), []);
+
+  const handleSendMessage = useCallback((text: string) => {
+    const userMsg: ChatMessage = {
+      id: String(msgCounter.current++),
+      sender: "user",
+      name: "",
+      text,
+      color: "",
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+
+    // Имитация ответа Дворецкого
+    setIsTyping(true);
+    const delay = 800 + Math.random() * 1500;
+    setTimeout(() => {
+      const reply = BUTLER_REPLIES[Math.floor(Math.random() * BUTLER_REPLIES.length)];
+      const butlerMsg: ChatMessage = {
+        id: String(msgCounter.current++),
+        sender: "butler",
+        name: "Дворецкий",
+        text: reply,
+        color: "var(--accent)",
+        timestamp: new Date(),
+      };
+      setIsTyping(false);
+      setMessages((prev) => [...prev, butlerMsg]);
+    }, delay);
+  }, []);
 
   // Заставка
   if (screen === "splash") {
@@ -67,13 +127,14 @@ export default function Home() {
       <RightPanel isOpen={rightOpen} onClose={closeRight} />
 
       {/* Центральная область чата */}
-      <ChatArea />
+      <ChatArea messages={messages} isTyping={isTyping} />
 
-      {/* Нижняя панель */}
+      {/* Нижняя панель — ввод + кнопки */}
       <BottomBar
         onSettingsClick={() => setSettingsOpen(true)}
         onContactsClick={() => setContactsOpen(true)}
         onAgentsClick={() => setAgentsOpen(true)}
+        onSendMessage={handleSendMessage}
       />
 
       {/* Центр Управления */}
