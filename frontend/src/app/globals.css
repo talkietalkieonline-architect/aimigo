@@ -182,3 +182,57 @@ body {
   background: var(--accent-glow);
   border-radius: 2px;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Анимации
+   ══════════════════════════════════════════════════════════════ */
+
+/* Бегущая строка ЭФИР */
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+
+/* Появление сообщений */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Индикатор «печатает...» */
+@keyframes typingBounce {
+  0%, 60%, 100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+
+.typing-dot {
+  display: inline-block;
+  animation: typingBounce 1.4s ease-in-out infinite;
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Placeholder для input */
+input::placeholder {
+  color: var(--text-muted);
+}

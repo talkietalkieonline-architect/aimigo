@@ -11,6 +11,8 @@ import LeftPanel from "@/components/communicator/LeftPanel";
 import RightPanel from "@/components/communicator/RightPanel";
 import SettingsModal from "@/components/communicator/SettingsModal";
 import MyAgentsModal from "@/components/communicator/MyAgentsModal";
+import AgentCityModal from "@/components/communicator/AgentCityModal";
+import ContactsModal from "@/components/communicator/ContactsModal";
 
 type AppScreen = "splash" | "login" | "communicator";
 
@@ -20,6 +22,8 @@ export default function Home() {
   const [rightOpen, setRightOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [agentsOpen, setAgentsOpen] = useState(false);
+  const [cityOpen, setCityOpen] = useState(false);
+  const [contactsOpen, setContactsOpen] = useState(false);
   const [activeMode, setActiveMode] = useState("Общение");
   const [activeRoom, setActiveRoom] = useState("Общая комната");
 
@@ -68,7 +72,7 @@ export default function Home() {
       {/* Нижняя панель */}
       <BottomBar
         onSettingsClick={() => setSettingsOpen(true)}
-        onContactsClick={() => alert("Мои контакты — в разработке")}
+        onContactsClick={() => setContactsOpen(true)}
         onAgentsClick={() => setAgentsOpen(true)}
       />
 
@@ -82,7 +86,22 @@ export default function Home() {
       <MyAgentsModal
         isOpen={agentsOpen}
         onClose={() => setAgentsOpen(false)}
-        onOpenCity={() => alert("Город Агентов — следующий шаг")}
+        onOpenCity={() => {
+          setAgentsOpen(false);
+          setCityOpen(true);
+        }}
+      />
+
+      {/* Город Агентов */}
+      <AgentCityModal
+        isOpen={cityOpen}
+        onClose={() => setCityOpen(false)}
+      />
+
+      {/* Мои контакты */}
+      <ContactsModal
+        isOpen={contactsOpen}
+        onClose={() => setContactsOpen(false)}
       />
     </div>
   );
