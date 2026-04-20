@@ -1,21 +1,11 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useAgents } from "@/hooks/useAgents";
+import type { AgentOut } from "@/services/api";
 
 /* ══════════════════════════════════════════════════════════════
-   Город Агентов — каталог агентов с поиском, фильтрами и меню
+   Город Агентов — каталог из API с fallback на хардкод
    ══════════════════════════════════════════════════════════════ */
-
-interface CityAgent {
-  id: string;
-  name: string;
-  profession: string;
-  brand: string;
-  color: string;
-  type: "business" | "citizen" | "system";
-  added: boolean;
-  rating: number;
-  description: string;
-}
 
 const PROFESSIONS = [
   "Все",
@@ -39,162 +29,7 @@ const TYPES = [
   { id: "system", label: "Системные" },
 ];
 
-const CITY_AGENTS: CityAgent[] = [
-  {
-    id: "c1",
-    name: "Тим",
-    profession: "Консультант",
-    brand: "Adidas",
-    color: "#4CAF50",
-    type: "business",
-    added: true,
-    rating: 4.7,
-    description: "Эксперт по спортивной одежде и обуви Adidas. Подберу размер, расскажу о новинках, помогу оформить заказ.",
-  },
-  {
-    id: "c2",
-    name: "Алиса",
-    profession: "Продавец",
-    brand: "Zara",
-    color: "#E91E63",
-    type: "business",
-    added: true,
-    rating: 4.5,
-    description: "Стилист-консультант Zara. Помогу собрать образ, подскажу что сейчас в тренде.",
-  },
-  {
-    id: "c3",
-    name: "Дворецкий",
-    profession: "Ассистент",
-    brand: "Aimigo",
-    color: "#FFD700",
-    type: "system",
-    added: true,
-    rating: 5.0,
-    description: "Ваш персональный помощник. Всегда рядом, всё знаю о сервисе.",
-  },
-  {
-    id: "c4",
-    name: "Новости СПб",
-    profession: "Информатор",
-    brand: "Aimigo",
-    color: "#2196F3",
-    type: "system",
-    added: true,
-    rating: 4.8,
-    description: "Оперативные новости города: пробки, погода, МЧС, события.",
-  },
-  {
-    id: "c5",
-    name: "Макс",
-    profession: "Юрист",
-    brand: "Aimigo",
-    color: "#FF9800",
-    type: "system",
-    added: true,
-    rating: 4.6,
-    description: "Юрист-консультант по ПДД. Объясню штрафы, права и обязанности водителя.",
-  },
-  {
-    id: "c6",
-    name: "Доктор Вера",
-    profession: "Психолог",
-    brand: "Aimigo",
-    color: "#9C27B0",
-    type: "system",
-    added: false,
-    rating: 4.9,
-    description: "Психолог-консультант. Поговорим о том, что беспокоит. Помогу справиться со стрессом.",
-  },
-  {
-    id: "c7",
-    name: "Лена",
-    profession: "Стилист",
-    brand: "H&M",
-    color: "#F44336",
-    type: "business",
-    added: false,
-    rating: 4.3,
-    description: "Стилист H&M. Помогу подобрать гардероб на любой бюджет.",
-  },
-  {
-    id: "c8",
-    name: "Артём",
-    profession: "Тренер",
-    brand: "FitLife",
-    color: "#00BCD4",
-    type: "business",
-    added: false,
-    rating: 4.4,
-    description: "Персональный фитнес-тренер. Составлю программу тренировок и питания.",
-  },
-  {
-    id: "c9",
-    name: "София",
-    profession: "Аналитик",
-    brand: "DataPro",
-    color: "#607D8B",
-    type: "business",
-    added: false,
-    rating: 4.2,
-    description: "Бизнес-аналитик. Помогу разобраться с данными, построю отчёты.",
-  },
-  {
-    id: "c10",
-    name: "Борис",
-    profession: "Собеседник",
-    brand: "Aimigo",
-    color: "#795548",
-    type: "citizen",
-    added: false,
-    rating: 4.0,
-    description: "Просто хороший собеседник. Поговорим о жизни, книгах, кино.",
-  },
-  {
-    id: "c11",
-    name: "Мария",
-    profession: "Лектор",
-    brand: "EduTech",
-    color: "#3F51B5",
-    type: "business",
-    added: false,
-    rating: 4.8,
-    description: "Лектор по программированию. Python, JavaScript, Data Science — понятно и по делу.",
-  },
-  {
-    id: "c12",
-    name: "Игорь",
-    profession: "Консультант",
-    brand: "Nike",
-    color: "#FF5722",
-    type: "business",
-    added: false,
-    rating: 4.5,
-    description: "Консультант Nike. Кроссовки, экипировка, лимитированные коллекции.",
-  },
-  {
-    id: "c13",
-    name: "Олег",
-    profession: "Собеседник",
-    brand: "Aimigo",
-    color: "#8BC34A",
-    type: "citizen",
-    added: false,
-    rating: 3.9,
-    description: "Разбираюсь в музыке, путешествиях, гастрономии. Давай поболтаем!",
-  },
-  {
-    id: "c14",
-    name: "Почтальон",
-    profession: "Ассистент",
-    brand: "Aimigo",
-    color: "#CDDC39",
-    type: "system",
-    added: false,
-    rating: 4.7,
-    description: "Агент-почтальон. Проверю почту, уведомлю о важных письмах.",
-  },
-];
+
 
 export default function AgentCityModal({
   isOpen,
@@ -206,10 +41,13 @@ export default function AgentCityModal({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProfession, setSelectedProfession] = useState("Все");
   const [selectedType, setSelectedType] = useState("all");
-  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
-  const [agents, setAgents] = useState(CITY_AGENTS);
+  const [selectedAgent, setSelectedAgent] = useState<number | null>(null);
+  const [favorites, setFavorites] = useState<Set<number>>(new Set([1, 2, 6, 7]));
 
-  // Фильтрация
+  // Данные из API (useAgents хук с fallback на хардкод)
+  const { agents, total, businessCount, citizenCount, refetch, loading } = useAgents();
+
+  // Локальная фильтрация (поиск + профессия + тип)
   const filtered = useMemo(() => {
     return agents.filter((a) => {
       const matchSearch =
@@ -220,18 +58,12 @@ export default function AgentCityModal({
       const matchProfession =
         selectedProfession === "Все" || a.profession === selectedProfession;
       const matchType =
-        selectedType === "all" || a.type === selectedType;
+        selectedType === "all" || a.agent_type === selectedType;
       return matchSearch && matchProfession && matchType;
     });
   }, [agents, searchQuery, selectedProfession, selectedType]);
 
-  // Счётчики
-  const counts = useMemo(() => ({
-    total: agents.length,
-    business: agents.filter((a) => a.type === "business").length,
-    citizen: agents.filter((a) => a.type === "citizen").length,
-    system: agents.filter((a) => a.type === "system").length,
-  }), [agents]);
+  const counts = { total, business: businessCount, citizen: citizenCount, system: total - businessCount - citizenCount };
 
   if (!isOpen) return null;
 
@@ -239,10 +71,14 @@ export default function AgentCityModal({
     ? agents.find((a) => a.id === selectedAgent)
     : null;
 
-  const toggleAdd = (id: string) => {
-    setAgents((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, added: !a.added } : a))
-    );
+  const isFav = (id: number) => favorites.has(id);
+
+  const toggleAdd = (id: number) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
   return (
@@ -398,7 +234,7 @@ export default function AgentCityModal({
                     <h3 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
                       {agentDetails.name}
                     </h3>
-                    {agentDetails.added && (
+                    {isFav(agentDetails.id) && (
                       <span
                         className="text-[9px] px-2 py-0.5 rounded-full"
                         style={{
@@ -434,7 +270,7 @@ export default function AgentCityModal({
               <div className="flex flex-col gap-1">
                 {[
                   "Смотреть презентацию",
-                  agentDetails.added ? "Уже у тебя в избранном" : "Добавить в Мои агенты",
+                  isFav(agentDetails.id) ? "Уже у тебя в избранном" : "Добавить в Мои агенты",
                   "Начать чат",
                   "Оценить агента",
                   "Пожаловаться",
@@ -506,6 +342,7 @@ export default function AgentCityModal({
                     <button
                       key={agent.id}
                       onClick={() => setSelectedAgent(agent.id)}
+
                       className="flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all"
                       style={{ background: "transparent" }}
                       onMouseEnter={(e) =>
@@ -536,7 +373,7 @@ export default function AgentCityModal({
                           >
                             {agent.name}
                           </span>
-                          {agent.added && (
+                          {isFav(agent.id) && (
                             <span
                               className="text-[8px] px-1.5 py-0.5 rounded-full shrink-0"
                               style={{

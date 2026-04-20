@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { sendSMS, verifySMS, type SendSMSResponse } from "@/services/api";
+import { sendSMS, verifySMS, type SendSMSResponse, type UserProfile } from "@/services/api";
 
 type AuthStep = "phone" | "sms";
 
@@ -25,7 +25,7 @@ function onlyDigits(s: string): string {
   return s.replace(/\D/g, "");
 }
 
-export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
+export default function LoginScreen({ onLogin }: { onLogin: (userData?: Partial<UserProfile>) => void }) {
   const [step, setStep] = useState<AuthStep>("phone");
   const [digits, setDigits] = useState(""); // 10 цифр без +7
   const [smsCode, setSmsCode] = useState("");
@@ -105,10 +105,14 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
 
     try {
       // Пытаемся через реальный API → JWT
-      await verifySMS(fullPhone, smsCode);
+      const res = await verifySMS(fullPhone, smsCode);
       localStorage.setItem("aimigo_phone", digits);
-      onLogin();
-    } catch (err: unknown) {
+      onLogin({
+        id: res.user_id,
+        phone: fullPhone,
+        display_name: res.display_name,
+      } as Partial<UserProfile>);
+    } catch {
       // Fallback — локальная проверка
       if (smsCode !== generatedCode) {
         setError("Неверный код");
@@ -122,7 +126,7 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
         expires: Date.now() + 30 * 24 * 60 * 60 * 1000,
       }));
       localStorage.setItem("aimigo_phone", digits);
-      onLogin();
+      onLogin({ phone: fullPhone } as Partial<UserProfile>);
     } finally {
       setSending(false);
     }

@@ -113,11 +113,10 @@ export interface AgentOut {
   brand: string;
   agent_type: string;
   description: string;
-  greeting: string;
-  avatar_emoji: string;
-  avatar_color: string;
+  color: string;
+  aimigo_link?: string;
   rating: number;
-  is_active: boolean;
+  rating_count: number;
 }
 
 export interface AgentListResponse {
@@ -207,8 +206,8 @@ export function updateMe(data: Partial<UserProfile>): Promise<UserProfile> {
 //  WEBSOCKET — Реалтайм чат
 // ═══════════════════════════════════════════════
 
-/** Подключение к WebSocket чату */
-export function connectChat(room: string, onMessage: (msg: MessageOut) => void): WebSocket | null {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function connectChat(room: string, onMessage: (msg: any) => void): WebSocket | null {
   const token = getToken();
   if (!token) return null;
 

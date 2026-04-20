@@ -1,12 +1,13 @@
 "use client";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useChat } from "@/hooks/useChat";
 import SplashScreen from "@/components/auth/SplashScreen";
 import LoginScreen from "@/components/auth/LoginScreen";
 import Particles from "@/components/communicator/Particles";
 import TopBar from "@/components/communicator/TopBar";
 import BottomBar from "@/components/communicator/BottomBar";
 import ChatArea from "@/components/communicator/ChatArea";
-import type { ChatMessage } from "@/components/communicator/ChatArea";
 import SideTab from "@/components/communicator/SideTab";
 import LeftPanel from "@/components/communicator/LeftPanel";
 import RightPanel from "@/components/communicator/RightPanel";
@@ -17,45 +18,8 @@ import ContactsModal from "@/components/communicator/ContactsModal";
 
 type AppScreen = "splash" | "login" | "communicator";
 
-// Ответы Дворецкого (демо)
-const BUTLER_REPLIES = [
-  "Отличный вопрос! Давайте разберёмся вместе.",
-  "Я всегда рад помочь. Что именно вас интересует?",
-  "Хороший выбор! Могу подсказать ещё несколько вариантов.",
-  "Записал. Напомню когда потребуется!",
-  "Сейчас посмотрю в Городе Агентов, есть ли подходящий специалист.",
-  "Между прочим, сегодня в Эфире много интересного — обратите внимание на бегущую строку.",
-  "Я рядом, если что — обращайтесь в любой момент.",
-  "Могу найти агента-консультанта по этой теме. Хотите?",
-  "Это интересно! Расскажите подробнее.",
-  "Принято! Работаю над этим.",
-];
-
-const INITIAL_MESSAGES: ChatMessage[] = [
-  {
-    id: "1",
-    sender: "butler",
-    name: "Дворецкий",
-    text: "Добро пожаловать в Aimigo! Я ваш Дворецкий. Могу рассказать о сервисе, найти нужного агента или просто поболтать.",
-    color: "var(--accent)",
-    timestamp: new Date(),
-  },
-];
-
-/** Проверка сохранённой сессии */
-function hasValidSession(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    const raw = localStorage.getItem("aimigo_session");
-    if (raw) {
-      const session = JSON.parse(raw);
-      return session.loggedIn && session.expires > Date.now();
-    }
-  } catch {}
-  return false;
-}
-
 export default function Home() {
+  const { isLoggedIn, login } = useAuth();
   const [screen, setScreen] = useState<AppScreen>("splash");
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
@@ -68,73 +32,25 @@ export default function Home() {
   const [topBarH, setTopBarH] = useState(80);
   const [bottomBarH, setBottomBarH] = useState(130);
 
-  // Чат — стейт и логика
-  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
-  const [isTyping, setIsTyping] = useState(false);
-  const msgCounter = useRef(2);
+  // Чат — через хук (WebSocket + offline fallback)
+  const { messages, isTyping, isConnected, sendMessage, attachMedia } = useChat("general");
 
   const closeLeft = useCallback(() => setLeftOpen(false), []);
   const closeRight = useCallback(() => setRightOpen(false), []);
 
-  const butlerReply = useCallback(() => {
-    setIsTyping(true);
-    const delay = 800 + Math.random() * 1500;
-    setTimeout(() => {
-      const reply = BUTLER_REPLIES[Math.floor(Math.random() * BUTLER_REPLIES.length)];
-      const butlerMsg: ChatMessage = {
-        id: String(msgCounter.current++),
-        sender: "butler",
-        name: "Дворецкий",
-        text: reply,
-        color: "var(--accent)",
-        timestamp: new Date(),
-      };
-      setIsTyping(false);
-      setMessages((prev) => [...prev, butlerMsg]);
-    }, delay);
-  }, []);
-
-  const handleSendMessage = useCallback((text: string) => {
-    const userMsg: ChatMessage = {
-      id: String(msgCounter.current++),
-      sender: "user",
-      name: "",
-      text,
-      color: "",
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
-    butlerReply();
-  }, [butlerReply]);
-
-  const handleAttachMedia = useCallback((file: File) => {
-    const url = URL.createObjectURL(file);
-    const isVideo = file.type.startsWith("video/");
-    const mediaMsg: ChatMessage = {
-      id: String(msgCounter.current++),
-      sender: "user",
-      name: "",
-      text: "",
-      color: "",
-      timestamp: new Date(),
-      mediaUrl: url,
-      mediaType: isVideo ? "video" : "image",
-    };
-    setMessages((prev) => [...prev, mediaMsg]);
-    butlerReply();
-  }, [butlerReply]);
-
-  // Заставка — после неё проверяем сессию
-  // Если сессия есть — сразу в коммуникатор (как ChatGPT)
+  // Заставка — после неё проверяем сессию через AuthContext
   if (screen === "splash") {
     return <SplashScreen onFinish={() => {
-      setScreen(hasValidSession() ? "communicator" : "login");
+      setScreen(isLoggedIn ? "communicator" : "login");
     }} />;
   }
 
   // Экран входа
   if (screen === "login") {
-    return <LoginScreen onLogin={() => setScreen("communicator")} />;
+    return <LoginScreen onLogin={(userData) => {
+      login(userData || {});
+      setScreen("communicator");
+    }} />;
   }
 
   // Коммуникатор
@@ -145,6 +61,17 @@ export default function Home() {
 
       {/* Верхняя панель */}
       <TopBar tickerActive={true} onHeightChange={setTopBarH} />
+
+      {/* Индикатор подключения к серверу */}
+      {isConnected && (
+        <div
+          className="fixed top-1 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] animate-fade-in"
+          style={{ zIndex: 60, background: "rgba(76,175,80,0.15)", color: "#4CAF50" }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+          online
+        </div>
+      )}
 
       {/* Боковые язычки — всегда видны, сдвигаются с панелью */}
       <SideTab side="left" panelOpen={leftOpen} onClick={() => setLeftOpen(!leftOpen)} />
@@ -171,8 +98,8 @@ export default function Home() {
         onSettingsClick={() => setSettingsOpen(true)}
         onContactsClick={() => setContactsOpen(true)}
         onAgentsClick={() => setAgentsOpen(true)}
-        onSendMessage={handleSendMessage}
-        onAttachMedia={handleAttachMedia}
+        onSendMessage={sendMessage}
+        onAttachMedia={attachMedia}
         onHeightChange={setBottomBarH}
       />
 

@@ -114,13 +114,62 @@
   - Копировать текст
   - Сохранить медиа (фото/видео)
 
-### Что следующее (Сессия 6)
-1. Подключение фронта к бэкенду (fetch + WebSocket)
-2. Реальная авторизация через API (телефон + SMS → JWT)
-3. Город Агентов → данные из API
-4. Реалтайм чат через WebSocket
-5. Docker Compose (бэкенд + PostgreSQL + Redis)
-6. Коммерческий блок: кнопка "Для бизнеса" в Городе Агентов + ЛК бизнеса + конструктор агента
+### Сессия 6 (Июнь 2025)
+- [x] **AuthContext** — единый React-контекст авторизации (AuthProvider)
+  - Проверка сессии при загрузке (localStorage + API /users/me)
+  - login() / logout() функции
+  - Флаг isOnline (бэкенд доступен / нет)
+  - Graceful fallback на offline-режим
+- [x] **useChat хук** — реалтайм чат через WebSocket
+  - Подключение к WS /ws/chat/{room} с JWT-токеном
+  - Загрузка истории из API /chat/history
+  - Автопереподключение через 3 сек
+  - Offline fallback: локальные ответы Дворецкого (как раньше)
+  - Индикатор isConnected (online badge)
+- [x] **useAgents хук** — агенты из API
+  - Загрузка из GET /api/agents с поиском/фильтрами
+  - Fallback на 14 хардкод-агентов если API недоступен
+  - Счётчики: total, business, citizen, system
+- [x] **LoginScreen → API** — реальная авторизация
+  - send-sms → verify-sms → JWT токен
+  - При успехе — сохранение в AuthContext
+  - Fallback на локальный режим (как раньше)
+- [x] **AgentCityModal → API** — каталог из бэкенда
+  - Убран хардкод CITY_AGENTS (170 строк)
+  - Использует useAgents хук
+  - Синхронизированы типы AgentOut (фронт ↔ бэкенд)
+- [x] **page.tsx рефакторинг** — убраны inline данные
+  - Убраны BUTLER_REPLIES, INITIAL_MESSAGES, hasValidSession
+  - Использует useAuth + useChat
+  - Индикатор «online» при подключении к серверу
+- [x] **api.ts** — синхронизация типов
+  - AgentOut: color (не avatar_color), rating_count, aimigo_link
+  - Убраны несуществующие поля (greeting, avatar_emoji, is_active)
+- [x] **Docker Compose** — добавлен Redis
+  - redis:7-alpine с healthcheck
+  - REDIS_URL в env бэкенда
+  - depends_on: postgres + redis
+- [x] **Build проходит чисто** (TypeScript + Next.js production build)
+
+### Архитектура после Сессии 6
+```
+frontend/src/
+  context/AuthContext.tsx     ← NEW: единый контекст авторизации
+  hooks/useChat.ts            ← NEW: WebSocket чат + offline fallback
+  hooks/useAgents.ts          ← NEW: агенты из API + fallback
+  services/api.ts             ← UPDATED: синхронизированы типы
+  app/page.tsx                ← UPDATED: useAuth + useChat
+  app/layout.tsx              ← UPDATED: AuthProvider
+  components/auth/LoginScreen ← UPDATED: API авторизация
+  components/communicator/AgentCityModal ← UPDATED: useAgents
+```
+
+### Что следующее (Сессия 7)
+1. Установить Docker и запустить `docker compose up` — проверить реальную связку
+2. Коммерческий блок: кнопка "Для бизнеса" в Городе Агентов + ЛК бизнеса
+3. Конструктор агента (MVP)
+4. Подключение LLM (Дворецкий отвечает через GPT/Claude)
+5. Голосовой ввод (Web Speech API → текст → LLM)
 
 ---
 
