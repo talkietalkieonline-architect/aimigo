@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import {
   adminGetAgents,
@@ -105,9 +106,12 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!isAdmin) return;
-    if (tab === "agents") loadAgents();
-    if (tab === "users") loadUsers();
-    if (tab === "stats") loadStats();
+    const load = async () => {
+      if (tab === "agents") await loadAgents();
+      if (tab === "users") await loadUsers();
+      if (tab === "stats") await loadStats();
+    };
+    load();
   }, [tab, isAdmin, loadAgents, loadUsers, loadStats]);
 
   // Actions
@@ -208,9 +212,9 @@ export default function AdminPage() {
             {user?.display_name} ({user?.phone})
           </span>
         </div>
-        <a href="/" className="text-sm text-gray-400 hover:text-white transition-colors">
+        <Link href="/" className="text-sm text-gray-400 hover:text-white transition-colors">
           ← К коммуникатору
-        </a>
+        </Link>
       </header>
 
       <div className="flex">

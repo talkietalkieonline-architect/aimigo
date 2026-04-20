@@ -1,7 +1,6 @@
 "use client";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useAgents } from "@/hooks/useAgents";
-import type { AgentOut } from "@/services/api";
 
 /* ══════════════════════════════════════════════════════════════
    Город Агентов — каталог из API с fallback на хардкод
@@ -47,7 +46,7 @@ export default function AgentCityModal({
   const [favorites, setFavorites] = useState<Set<number>>(new Set([1, 2, 6, 7]));
 
   // Данные из API (useAgents хук с fallback на хардкод)
-  const { agents, total, businessCount, citizenCount, refetch, loading } = useAgents();
+  const { agents, total, businessCount, citizenCount } = useAgents();
 
   // Локальная фильтрация (поиск + профессия + тип)
   const filtered = useMemo(() => {

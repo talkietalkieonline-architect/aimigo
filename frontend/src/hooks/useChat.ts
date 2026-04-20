@@ -66,6 +66,7 @@ export function useChat(initialRoom: string = "general"): UseChatResult {
   const wsRef = useRef<WebSocket | null>(null);
   const msgCounter = useRef(100);
   const reconnectTimer = useRef<NodeJS.Timeout | null>(null);
+  const connectWSRef = useRef<(() => void) | undefined>(undefined);
 
   // Подключаемся к WebSocket при монтировании
   const connectWS = useCallback(() => {
@@ -110,9 +111,8 @@ export function useChat(initialRoom: string = "general"): UseChatResult {
     ws.onclose = () => {
       setIsConnected(false);
       console.log("[ws] Отключён");
-      // Автопереподключение через 3 сек
       reconnectTimer.current = setTimeout(() => {
-        connectWS();
+        connectWSRef.current?.();
       }, 3000);
     };
 
@@ -121,7 +121,10 @@ export function useChat(initialRoom: string = "general"): UseChatResult {
     };
 
     wsRef.current = ws;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room]);
+
+  useEffect(() => { connectWSRef.current = connectWS; }, [connectWS]);
 
   // Загрузить историю из API
   const loadHistory = useCallback(async () => {

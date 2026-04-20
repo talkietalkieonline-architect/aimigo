@@ -69,19 +69,20 @@ export default function BottomBar({
   // === Web Speech API распознавание речи ===
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const [voiceText, setVoiceText] = useState("");
+  const onSendRef = useRef(onSendMessage);
+  const micStateRef = useRef(micState);
+  const startRecognitionRef = useRef<(() => void) | undefined>(undefined);
+
+  useEffect(() => { onSendRef.current = onSendMessage; }, [onSendMessage]);
+  useEffect(() => { micStateRef.current = micState; }, [micState]);
 
   const startRecognition = useCallback(() => {
-    const SpeechRecognition = (window as unknown as Record<string, unknown>).SpeechRecognition || (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      console.warn("[voice] Web Speech API не поддерживается");
-      return;
-    }
+    const SR = (window as unknown as Record<string, unknown>).SpeechRecognition || (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
+    if (!SR) { console.warn("[voice] Web Speech API не поддерживается"); return; }
 
-    if (recognitionRef.current) {
-      recognitionRef.current.abort();
-    }
+    if (recognitionRef.current) { recognitionRef.current.abort(); }
 
-    const recognition = new (SpeechRecognition as unknown as { new(): SpeechRecognition })();
+    const recognition = new (SR as unknown as { new(): SpeechRecognition })();
     recognition.lang = "ru-RU";
     recognition.continuous = true;
     recognition.interimResults = true;
@@ -92,96 +93,67 @@ export default function BottomBar({
         transcript += event.results[i][0].transcript;
       }
       setVoiceText(transcript);
-
-      // Если результат финальный и не always-on — отправляем
       const lastResult = event.results[event.results.length - 1];
       if (lastResult.isFinal && transcript.trim()) {
-        onSendMessage(transcript.trim());
+        onSendRef.current(transcript.trim());
         setVoiceText("");
       }
     };
 
     recognition.onerror = (event) => {
       console.warn("[voice] Error:", event.error);
-      if (event.error !== "aborted") {
+      if (event.error !== "aborted") { setMicState("off"); }
+    };
+
+    recognition.onend = () => {
+      if (micStateRef.current === "always") {
+        setTimeout(() => startRecognitionRef.current?.(), 300);
+      } else {
         setMicState("off");
       }
     };
 
-    recognition.onend = () => {
-      // Если always-on — перезапускаем
-      setMicState((prev) => {
-        if (prev === "always") {
-          setTimeout(() => startRecognition(), 300);
-          return prev;
-        }
-        return "off";
-      });
-    };
-
     recognition.start();
     recognitionRef.current = recognition;
-  }, [onSendMessage]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => { startRecognitionRef.current = startRecognition; }, [startRecognition]);
 
   const stopRecognition = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.abort();
-      recognitionRef.current = null;
-    }
-    // Если есть неотправленный текст — отправляем
+    if (recognitionRef.current) { recognitionRef.current.abort(); recognitionRef.current = null; }
     setVoiceText((prev) => {
-      if (prev.trim()) {
-        onSendMessage(prev.trim());
-      }
+      if (prev.trim()) { onSendRef.current(prev.trim()); }
       return "";
     });
-  }, [onSendMessage]);
+  }, []);
 
   // === Микрофон: короткое / длинное нажатие ===
   const handleMicDown = useCallback(() => {
     isLongPress.current = false;
     longPressTimer.current = setTimeout(() => {
       isLongPress.current = true;
-      // Длинное нажатие
-      setMicState((prev) => {
-        if (prev === "off") {
-          startRecognition();
-          return "always";
-        }
-        if (prev === "on" || prev === "always") {
-          stopRecognition();
-          return "mute";
-        }
-        return prev;
-      });
+      if (micStateRef.current === "off") {
+        setMicState("always");
+        startRecognition();
+      } else if (micStateRef.current === "on" || micStateRef.current === "always") {
+        setMicState("mute");
+        stopRecognition();
+      }
     }, LONG_PRESS_MS);
   }, [startRecognition, stopRecognition]);
 
   const handleMicUp = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
     if (isLongPress.current) return;
-    // Короткое нажатие
-    setMicState((prev) => {
-      if (prev === "off") {
-        startRecognition();
-        return "on";
-      }
-      if (prev === "on") {
-        stopRecognition();
-        return "off";
-      }
-      if (prev === "always") {
-        stopRecognition();
-        return "off";
-      }
-      if (prev === "mute") {
-        return "off";
-      }
-      return "off";
-    });
+    // Короткое нажатие: тоггл on/off
+    if (micStateRef.current === "off") {
+      setMicState("on");
+      startRecognition();
+    } else {
+      setMicState("off");
+      stopRecognition();
+    }
   }, [startRecognition, stopRecognition]);
 
   // Визуал микрофона
