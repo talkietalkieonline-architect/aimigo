@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { sendSMS, verifySMS, type SendSMSResponse } from "@/services/api";
 
 type AuthStep = "phone" | "sms";
 
@@ -67,47 +68,64 @@ export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
     setError("");
   };
 
-  const handleSendSMS = () => {
+  const handleSendSMS = async () => {
     if (!isPhoneComplete) return;
     setError("");
     setSending(true);
-
-    // Сохраняем номер
     localStorage.setItem("aimigo_phone", digits);
 
-    // Генерируем 4-значный код (MVP — показываем пользователю)
-    const code = String(Math.floor(1000 + Math.random() * 9000));
-    setGeneratedCode(code);
-
-    // Имитация отправки
-    setTimeout(() => {
-      setSending(false);
-      setSmsCode(code); // Автоподстановка кода (как будто пришло SMS)
+    try {
+      // Пытаемся через реальный API
+      const res: SendSMSResponse = await sendSMS(fullPhone);
+      const code = res.debug_code || "";
+      setGeneratedCode(code);
+      setSmsCode(code); // Автоподстановка (MVP)
       setStep("sms");
       setCountdown(60);
-    }, 800);
+    } catch {
+      // Fallback — локальный режим (бэкенд не доступен)
+      const code = String(Math.floor(1000 + Math.random() * 9000));
+      setGeneratedCode(code);
+      setSmsCode(code);
+      setStep("sms");
+      setCountdown(60);
+    } finally {
+      setSending(false);
+    }
   };
 
-  const handleVerifyAndLogin = () => {
+  const handleVerifyAndLogin = async () => {
     if (smsCode.length < 4) {
       setError("Введите 4-значный код");
       return;
     }
-    if (smsCode !== generatedCode) {
-      setError("Неверный код");
-      return;
+
+    setError("");
+    setSending(true);
+
+    try {
+      // Пытаемся через реальный API → JWT
+      await verifySMS(fullPhone, smsCode);
+      localStorage.setItem("aimigo_phone", digits);
+      onLogin();
+    } catch (err: unknown) {
+      // Fallback — локальная проверка
+      if (smsCode !== generatedCode) {
+        setError("Неверный код");
+        setSending(false);
+        return;
+      }
+      // Сохраняем сессию локально (offline режим)
+      localStorage.setItem("aimigo_session", JSON.stringify({
+        phone: fullPhone,
+        loggedIn: true,
+        expires: Date.now() + 30 * 24 * 60 * 60 * 1000,
+      }));
+      localStorage.setItem("aimigo_phone", digits);
+      onLogin();
+    } finally {
+      setSending(false);
     }
-
-    // Сохраняем сессию (30 дней)
-    const session = {
-      phone: fullPhone,
-      loggedIn: true,
-      expires: Date.now() + 30 * 24 * 60 * 60 * 1000,
-    };
-    localStorage.setItem("aimigo_session", JSON.stringify(session));
-    localStorage.setItem("aimigo_phone", digits);
-
-    onLogin();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent, action: () => void) => {

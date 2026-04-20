@@ -1,4 +1,4 @@
-"""Схемы авторизации"""
+"""Схемы авторизации — SMS-only"""
 from typing import Optional
 
 from pydantic import BaseModel
@@ -17,17 +17,6 @@ class SendSMSResponse(BaseModel):
 class VerifySMSRequest(BaseModel):
     phone: str
     code: str
-
-
-class SetPasswordRequest(BaseModel):
-    phone: str
-    code: str
-    password: str
-
-
-class LoginRequest(BaseModel):
-    phone: str
-    password: str
 
 
 class TokenResponse(BaseModel):

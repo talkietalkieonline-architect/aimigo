@@ -1,20 +1,18 @@
-"""API авторизации — телефон + SMS + пароль"""
+"""API авторизации — только SMS (SMS-only, без пароля)"""
 import random
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import create_access_token
 from app.models.user import User
 from app.schemas.auth import (
-    LoginRequest,
     SendSMSRequest,
     SendSMSResponse,
-    SetPasswordRequest,
     TokenResponse,
     VerifySMSRequest,
 )
@@ -57,9 +55,9 @@ async def send_sms(body: SendSMSRequest, db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.post("/verify-sms")
+@router.post("/verify-sms", response_model=TokenResponse)
 async def verify_sms(body: VerifySMSRequest, db: AsyncSession = Depends(get_db)):
-    """Проверить SMS-код"""
+    """Проверить SMS-код → сразу выдать JWT (без пароля)"""
     result = await db.execute(select(User).where(User.phone == body.phone))
     user = result.scalar_one_or_none()
 
@@ -72,61 +70,19 @@ async def verify_sms(body: VerifySMSRequest, db: AsyncSession = Depends(get_db))
     if user.sms_code != body.code:
         raise HTTPException(400, "Неверный код")
 
+    # Успешная верификация
     user.is_verified = True
     user.sms_code = None
     user.sms_code_expires = None
-    await db.flush()
+    user.is_online = True
+    user.last_seen = datetime.now(timezone.utc)
 
-    return {"message": "Код подтверждён", "verified": True}
-
-
-@router.post("/set-password", response_model=TokenResponse)
-async def set_password(body: SetPasswordRequest, db: AsyncSession = Depends(get_db)):
-    """Установить пароль (регистрация) — после подтверждения SMS"""
-    result = await db.execute(select(User).where(User.phone == body.phone))
-    user = result.scalar_one_or_none()
-
-    if not user:
-        raise HTTPException(400, "Пользователь не найден")
-
-    if not user.is_verified:
-        raise HTTPException(400, "Сначала подтвердите номер телефона")
-
-    if len(body.password) < 4:
-        raise HTTPException(400, "Пароль должен быть не менее 4 символов")
-
-    user.password_hash = hash_password(body.password)
-
-    # Генерируем aimigo_link если нет
     if not user.aimigo_link:
         user.aimigo_link = f"user-{user.id}"
 
     await db.flush()
 
-    token = create_access_token(user.id)
-    return TokenResponse(
-        access_token=token,
-        user_id=user.id,
-        display_name=user.display_name,
-    )
-
-
-@router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
-    """Вход по телефону + паролю"""
-    result = await db.execute(select(User).where(User.phone == body.phone))
-    user = result.scalar_one_or_none()
-
-    if not user or not user.password_hash:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный номер или пароль")
-
-    if not verify_password(body.password, user.password_hash):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный номер или пароль")
-
-    user.is_online = True
-    user.last_seen = datetime.now(timezone.utc)
-    await db.flush()
-
+    # Сразу выдаём JWT — без пароля
     token = create_access_token(user.id)
     return TokenResponse(
         access_token=token,
