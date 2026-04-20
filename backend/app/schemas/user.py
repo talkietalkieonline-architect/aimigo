@@ -12,6 +12,7 @@ class UserOut(BaseModel):
     theme: str
     avatar_color: str
     is_online: bool
+    is_admin: bool = False
 
     class Config:
         from_attributes = True

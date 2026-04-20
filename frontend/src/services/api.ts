@@ -74,6 +74,7 @@ export interface TokenResponse {
   token_type: string;
   user_id: number;
   display_name: string;
+  is_admin: boolean;
 }
 
 /** Отправить SMS-код */
@@ -97,6 +98,7 @@ export async function verifySMS(phone: string, code: string): Promise<TokenRespo
     loggedIn: true,
     userId: data.user_id,
     displayName: data.display_name,
+    isAdmin: data.is_admin,
     expires: Date.now() + 30 * 24 * 60 * 60 * 1000,
   }));
   return data;
@@ -165,15 +167,7 @@ export function getMyAgents(): Promise<AgentOut[]> {
   return apiFetch("/api/agents/my");
 }
 
-/** Создать агента */
-export function createAgent(data: AgentCreate): Promise<AgentOut> {
-  return apiFetch("/api/agents", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-}
-
-/** Обновить агента */
+/** Обновить настройки агента (бизнес) */
 export function updateAgent(id: number, data: Partial<AgentCreate>): Promise<AgentOut> {
   return apiFetch(`/api/agents/${id}`, {
     method: "PATCH",
@@ -181,9 +175,88 @@ export function updateAgent(id: number, data: Partial<AgentCreate>): Promise<Age
   });
 }
 
-/** Удалить агента */
-export function deleteAgent(id: number): Promise<void> {
-  return apiFetch(`/api/agents/${id}`, { method: "DELETE" });
+// ═══════════════════════════════════════════════
+//  ADMIN API
+// ═══════════════════════════════════════════════
+
+export interface AgentDetailOut extends AgentOut {
+  system_prompt?: string;
+  llm_model: string;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface AdminStats {
+  agents: { total: number; system: number; business: number; citizen: number };
+  users: { total: number };
+}
+
+export interface AdminUser {
+  id: number;
+  phone: string;
+  display_name: string;
+  is_admin: boolean;
+  is_online: boolean;
+  created_at?: string;
+}
+
+/** Админ: все агенты */
+export function adminGetAgents(params?: { search?: string; agent_type?: string; include_inactive?: boolean }): Promise<AgentDetailOut[]> {
+  const q = new URLSearchParams();
+  if (params?.search) q.set("search", params.search);
+  if (params?.agent_type) q.set("agent_type", params.agent_type);
+  if (params?.include_inactive) q.set("include_inactive", "true");
+  const qs = q.toString();
+  return apiFetch(`/api/admin/agents${qs ? `?${qs}` : ""}`);
+}
+
+/** Админ: карточка агента */
+export function adminGetAgent(id: number): Promise<AgentDetailOut> {
+  return apiFetch(`/api/admin/agents/${id}`);
+}
+
+/** Админ: создать агента */
+export function adminCreateAgent(data: AgentCreate, ownerId?: number): Promise<AgentDetailOut> {
+  const q = ownerId ? `?owner_id=${ownerId}` : "";
+  return apiFetch(`/api/admin/agents${q}`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+/** Админ: обновить агента */
+export function adminUpdateAgent(id: number, data: Partial<AgentCreate>): Promise<AgentDetailOut> {
+  return apiFetch(`/api/admin/agents/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+/** Админ: привязать агента к бизнесу */
+export function adminAssignAgent(id: number, ownerId: number | null): Promise<AgentDetailOut> {
+  const q = ownerId !== null ? `?owner_id=${ownerId}` : "";
+  return apiFetch(`/api/admin/agents/${id}/assign${q}`, { method: "PATCH" });
+}
+
+/** Админ: удалить агента */
+export function adminDeleteAgent(id: number, hard = false): Promise<void> {
+  return apiFetch(`/api/admin/agents/${id}?hard=${hard}`, { method: "DELETE" });
+}
+
+/** Админ: восстановить агента */
+export function adminRestoreAgent(id: number): Promise<AgentDetailOut> {
+  return apiFetch(`/api/admin/agents/${id}/restore`, { method: "PATCH" });
+}
+
+/** Админ: пользователи */
+export function adminGetUsers(search?: string): Promise<AdminUser[]> {
+  const q = search ? `?search=${encodeURIComponent(search)}` : "";
+  return apiFetch(`/api/admin/users${q}`);
+}
+
+/** Админ: статистика */
+export function adminGetStats(): Promise<AdminStats> {
+  return apiFetch("/api/admin/stats");
 }
 
 // ═══════════════════════════════════════════════
@@ -226,6 +299,7 @@ export interface UserProfile {
   theme: string;
   avatar_color: string;
   is_online: boolean;
+  is_admin: boolean;
   bio?: string;
 }
 

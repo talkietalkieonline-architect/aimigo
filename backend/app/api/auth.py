@@ -1,4 +1,4 @@
-"""API авторизации — только SMS (SMS-only, без пароля)"""
+которых создан магазин скорректировать """API авторизации — только SMS (SMS-only, без пароля)"""
 import random
 from datetime import datetime, timedelta, timezone
 

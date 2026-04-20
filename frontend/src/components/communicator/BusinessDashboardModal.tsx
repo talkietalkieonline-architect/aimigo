@@ -1,21 +1,31 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { getMyAgents, deleteAgent, type AgentOut } from "@/services/api";
+import { getMyAgents, updateAgent, type AgentOut, type AgentCreate } from "@/services/api";
 
 /* ══════════════════════════════════════════════════════════════
-   ЛК Бизнеса — управление своими агентами
+   ЛК Бизнеса — настройка привязанных агентов
+   Бизнес НЕ создаёт агентов — админ создаёт и привязывает.
+   Бизнес настраивает: голос, внешность, одежду, манеры, знания, промпт.
+   TODO Сессия 8: полный UI секций настройки персонажа.
    ══════════════════════════════════════════════════════════════ */
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onCreateAgent: () => void;
 }
 
-export default function BusinessDashboardModal({ isOpen, onClose, onCreateAgent }: Props) {
+export default function BusinessDashboardModal({ isOpen, onClose }: Props) {
   const [myAgents, setMyAgents] = useState<AgentOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<AgentOut | null>(null);
+  const [editMode, setEditMode] = useState(false);
+
+  // Редактируемые поля
+  const [editDesc, setEditDesc] = useState("");
+  const [editGreeting, setEditGreeting] = useState("");
+  const [editPrompt, setEditPrompt] = useState("");
+  const [editModel, setEditModel] = useState("gpt-4o-mini");
+  const [saving, setSaving] = useState(false);
 
   const loadMyAgents = useCallback(async () => {
     setLoading(true);
@@ -33,14 +43,30 @@ export default function BusinessDashboardModal({ isOpen, onClose, onCreateAgent 
     if (isOpen) loadMyAgents();
   }, [isOpen, loadMyAgents]);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Удалить агента? Это действие нельзя отменить.")) return;
+  const openEdit = (agent: AgentOut) => {
+    setEditDesc(agent.description || "");
+    setEditGreeting(agent.greeting || "");
+    setEditPrompt("");
+    setEditModel("gpt-4o-mini");
+    setEditMode(true);
+  };
+
+  const handleSave = async () => {
+    if (!selectedAgent) return;
+    setSaving(true);
     try {
-      await deleteAgent(id);
-      setMyAgents((prev) => prev.filter((a) => a.id !== id));
-      setSelectedAgent(null);
+      const data: Partial<AgentCreate> = {};
+      if (editDesc !== (selectedAgent.description || "")) data.description = editDesc;
+      if (editGreeting !== (selectedAgent.greeting || "")) data.greeting = editGreeting;
+      if (editPrompt.trim()) data.system_prompt = editPrompt;
+      if (editModel) data.llm_model = editModel;
+      await updateAgent(selectedAgent.id, data);
+      setEditMode(false);
+      loadMyAgents();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Ошибка удаления");
+      alert(err instanceof Error ? err.message : "Ошибка сохранения");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -89,118 +115,85 @@ export default function BusinessDashboardModal({ isOpen, onClose, onCreateAgent 
         {/* Контент */}
         <div className="flex-1 overflow-y-auto px-6 pb-6">
 
-          {/* Детали агента */}
-          {selectedAgent ? (
+          {/* Редактирование агента */}
+          {selectedAgent && editMode ? (
             <div className="animate-fade-in">
-              <button
-                onClick={() => setSelectedAgent(null)}
-                className="text-sm mb-4 flex items-center gap-1"
-                style={{ color: "var(--accent)" }}
-              >
-                ‹ Назад
-              </button>
-
-              {/* Карточка */}
-              <div className="flex items-start gap-4 mb-5">
-                <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
-                  style={{
-                    background: `${selectedAgent.color}22`,
-                    border: `2px solid ${selectedAgent.color}55`,
-                    color: selectedAgent.color,
-                  }}
-                >
-                  {selectedAgent.name[0]}
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-                    {selectedAgent.name}
-                  </h3>
-                  <p className="text-[12px]" style={{ color: "var(--text-secondary)" }}>
-                    {selectedAgent.profession} &bull; {selectedAgent.brand}
-                  </p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <span style={{ color: "#FFD700", fontSize: "12px" }}>★</span>
-                    <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                      {selectedAgent.rating.toFixed(1)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Статистика */}
-              <div className="grid grid-cols-3 gap-2 mb-5">
-                {[
-                  { label: "Диалогов", value: "—" },
-                  { label: "Рейтинг", value: selectedAgent.rating.toFixed(1) },
-                  { label: "Отзывов", value: String(selectedAgent.rating_count) },
-                ].map((stat) => (
-                  <div
-                    key={stat.label}
-                    className="rounded-xl px-3 py-3 text-center"
-                    style={{
-                      background: "var(--bg-glass)",
-                      border: "1px solid var(--bg-glass-border)",
-                    }}
-                  >
-                    <div className="text-lg font-semibold" style={{ color: "var(--accent)" }}>
-                      {stat.value}
-                    </div>
-                    <div className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: "var(--text-muted)" }}>
-                      {stat.label}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
+              <button onClick={() => setEditMode(false)} className="text-sm mb-4" style={{ color: "var(--accent)" }}>‹ Назад</button>
+              <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)" }}>Настройка: {selectedAgent.name}</h3>
               {/* Описание */}
-              {selectedAgent.description && (
-                <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--text-secondary)" }}>
-                  {selectedAgent.description}
-                </p>
-              )}
-
-              {/* Действия */}
-              <div className="flex flex-col gap-1">
-                {[
-                  { action: "Редактировать агента", danger: false },
-                  { action: "Посмотреть в каталоге", danger: false },
-                  { action: "Удалить агента", danger: true },
-                ].map(({ action, danger }) => (
-                  <button
-                    key={action}
-                    className="w-full text-left px-4 py-3 rounded-xl text-sm transition-all"
-                    style={{ color: danger ? "var(--danger)" : "var(--text-primary)" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-glass-hover)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                    onClick={() => {
-                      if (action === "Удалить агента") {
-                        handleDelete(selectedAgent.id);
-                      } else if (action === "Посмотреть в каталоге") {
-                        setSelectedAgent(null);
-                        onClose();
-                      }
-                    }}
-                  >
-                    {action}
-                  </button>
+              <div className="mb-3">
+                <label className="text-[10px] uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Описание</label>
+                <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={3}
+                  className="w-full rounded-xl px-4 py-2.5 text-sm bg-transparent outline-none resize-none"
+                  style={{ background: "var(--bg-glass)", border: "1px solid var(--bg-glass-border)", color: "var(--text-primary)" }} />
+              </div>
+              {/* Приветствие */}
+              <div className="mb-3">
+                <label className="text-[10px] uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Приветствие</label>
+                <textarea value={editGreeting} onChange={(e) => setEditGreeting(e.target.value)} rows={2}
+                  className="w-full rounded-xl px-4 py-2.5 text-sm bg-transparent outline-none resize-none"
+                  style={{ background: "var(--bg-glass)", border: "1px solid var(--bg-glass-border)", color: "var(--text-primary)" }} />
+              </div>
+              {/* Промпт */}
+              <div className="mb-3">
+                <label className="text-[10px] uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>AI инструкция</label>
+                <textarea value={editPrompt} onChange={(e) => setEditPrompt(e.target.value)} rows={4} placeholder="Как агент должен отвечать..."
+                  className="w-full rounded-xl px-4 py-2.5 text-sm bg-transparent outline-none resize-none font-mono"
+                  style={{ background: "var(--bg-glass)", border: "1px solid var(--bg-glass-border)", color: "var(--text-primary)" }} />
+              </div>
+              {/* Модель */}
+              <div className="mb-4">
+                <label className="text-[10px] uppercase tracking-wider mb-1.5 block" style={{ color: "var(--text-muted)" }}>AI модель</label>
+                <div className="flex gap-2">
+                  {[{ id: "gpt-4o-mini", label: "GPT-4o Mini" }, { id: "gpt-4o", label: "GPT-4o" }].map((m) => (
+                    <button key={m.id} onClick={() => setEditModel(m.id)} className="flex-1 px-3 py-2.5 rounded-xl text-[12px] transition-all text-center"
+                      style={{ background: editModel === m.id ? "var(--accent)" : "var(--bg-glass)", color: editModel === m.id ? "var(--bg-deep)" : "var(--text-secondary)", border: editModel === m.id ? "1px solid var(--accent)" : "1px solid var(--bg-glass-border)" }}>
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Плейсхолдеры будущих секций */}
+              {["Голос", "Внешность", "Одежда", "Манеры", "Знания и данные"].map((section) => (
+                <div key={section} className="rounded-xl px-4 py-3 mb-2" style={{ background: "var(--bg-glass)", border: "1px solid var(--bg-glass-border)" }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-medium" style={{ color: "var(--text-secondary)" }}>{section}</span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-full" style={{ background: "rgba(212,168,67,0.1)", color: "var(--accent)" }}>Скоро</span>
+                  </div>
+                </div>
+              ))}
+              <button onClick={handleSave} disabled={saving} className="w-full py-3 rounded-xl text-sm font-semibold mt-3 transition-all"
+                style={{ background: saving ? "var(--bg-glass-border)" : "var(--accent)", color: saving ? "var(--text-muted)" : "var(--bg-deep)" }}>
+                {saving ? "Сохраняю..." : "Сохранить"}
+              </button>
+            </div>
+          ) : selectedAgent ? (
+            /* Детали агента */
+            <div className="animate-fade-in">
+              <button onClick={() => setSelectedAgent(null)} className="text-sm mb-4" style={{ color: "var(--accent)" }}>‹ Назад</button>
+              <div className="flex items-start gap-4 mb-5">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-bold shrink-0" style={{ background: `${selectedAgent.color}22`, border: `2px solid ${selectedAgent.color}55`, color: selectedAgent.color }}>{selectedAgent.name[0]}</div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{selectedAgent.name}</h3>
+                  <p className="text-[12px]" style={{ color: "var(--text-secondary)" }}>{selectedAgent.profession} &bull; {selectedAgent.brand}</p>
+                  <div className="flex items-center gap-1 mt-1"><span style={{ color: "#FFD700", fontSize: "12px" }}>★</span><span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>{selectedAgent.rating.toFixed(1)}</span></div>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2 mb-5">
+                {[{ label: "Диалогов", value: "—" }, { label: "Рейтинг", value: selectedAgent.rating.toFixed(1) }, { label: "Отзывов", value: String(selectedAgent.rating_count) }].map((s) => (
+                  <div key={s.label} className="rounded-xl px-3 py-3 text-center" style={{ background: "var(--bg-glass)", border: "1px solid var(--bg-glass-border)" }}>
+                    <div className="text-lg font-semibold" style={{ color: "var(--accent)" }}>{s.value}</div>
+                    <div className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: "var(--text-muted)" }}>{s.label}</div>
+                  </div>
                 ))}
               </div>
+              {selectedAgent.description && <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--text-secondary)" }}>{selectedAgent.description}</p>}
+              <button onClick={() => openEdit(selectedAgent)} className="w-full py-3 rounded-xl text-sm font-semibold transition-all hover:scale-[1.02]" style={{ background: "var(--accent)", color: "var(--bg-deep)" }}>Настроить агента</button>
             </div>
           ) : (
             <>
-              {/* Кнопка создания */}
-              <button
-                onClick={() => { onCreateAgent(); }}
-                className="w-full py-3.5 rounded-xl text-sm font-semibold mb-5 transition-all hover:scale-[1.02]"
-                style={{ background: "var(--accent)", color: "var(--bg-deep)" }}
-              >
-                + Создать нового агента
-              </button>
-
-              {/* Список моих агентов */}
               <p className="text-[10px] uppercase tracking-wider mb-3" style={{ color: "var(--text-muted)" }}>
-                Мои агенты ({myAgents.length})
+                Ваши агенты ({myAgents.length})
               </p>
 
               {loading ? (
@@ -210,12 +203,8 @@ export default function BusinessDashboardModal({ isOpen, onClose, onCreateAgent 
               ) : myAgents.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="text-3xl mb-3 opacity-30">🤖</div>
-                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                    У вас пока нет агентов
-                  </p>
-                  <p className="text-[12px] mt-1" style={{ color: "var(--text-muted)" }}>
-                    Создайте первого AI-агента для вашего бизнеса
-                  </p>
+                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>У вас пока нет привязанных агентов</p>
+                  <p className="text-[12px] mt-2 leading-relaxed" style={{ color: "var(--text-muted)" }}>Свяжитесь с нами для создания<br />AI-агента для вашего бизнеса</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-1.5">
@@ -258,22 +247,13 @@ export default function BusinessDashboardModal({ isOpen, onClose, onCreateAgent 
                 </div>
               )}
 
-              {/* Инфо-блок */}
-              <div
-                className="rounded-xl px-4 py-3 mt-5"
-                style={{
-                  background: "var(--bg-glass)",
-                  border: "1px solid var(--bg-glass-border)",
-                }}
-              >
-                <p className="text-[11px] font-medium mb-1" style={{ color: "var(--accent)" }}>
-                  Как это работает?
-                </p>
+              <div className="rounded-xl px-4 py-3 mt-5" style={{ background: "var(--bg-glass)", border: "1px solid var(--bg-glass-border)" }}>
+                <p className="text-[11px] font-medium mb-1" style={{ color: "var(--accent)" }}>Как это работает?</p>
                 <ul className="text-[11px] leading-relaxed space-y-1" style={{ color: "var(--text-muted)" }}>
-                  <li>1. Создайте агента в Конструкторе</li>
-                  <li>2. Настройте AI-промпт и приветствие</li>
-                  <li>3. Агент появится в Городе Агентов</li>
-                  <li>4. Пользователи начнут с ним общаться</li>
+                  <li>1. Мы создаём AI-агента для вашего бизнеса</li>
+                  <li>2. Вы настраиваете его голос, внешность, манеры и знания</li>
+                  <li>3. Агент появляется в Городе Агентов</li>
+                  <li>4. Пользователи общаются с ним</li>
                 </ul>
               </div>
             </>

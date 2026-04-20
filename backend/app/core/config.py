@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
 
+    # Админка — номера телефонов админов (при регистрации получают is_admin=True)
+    ADMIN_PHONES: List[str] = []
+
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001"]
 

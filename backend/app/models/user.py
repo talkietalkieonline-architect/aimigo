@@ -20,6 +20,7 @@ class User(Base):
     # Статус
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_online: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Настройки
     theme: Mapped[str] = mapped_column(String(50), default="noir-gold")

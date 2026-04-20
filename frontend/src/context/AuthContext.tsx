@@ -30,6 +30,8 @@ interface AuthState {
   logout: () => void;
   /** Бэкенд доступен? */
   isOnline: boolean;
+  /** Админ? */
+  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthState>({
@@ -38,6 +40,7 @@ const AuthContext = createContext<AuthState>({
   login: () => {},
   logout: () => {},
   isOnline: false,
+  isAdmin: false,
 });
 
 export function useAuth() {
@@ -83,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isOnline, setIsOnline] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // При монтировании — проверяем сессию
   useEffect(() => {
@@ -101,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(profile);
           setIsOnline(true);
           setIsLoggedIn(true);
+          setIsAdmin(profile.is_admin || false);
           // Обновляем локальную сессию свежими данными
           saveSession(profile);
         })
@@ -140,23 +145,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       theme: userData.theme ?? "noir-gold",
       avatar_color: userData.avatar_color ?? "#d4a843",
       is_online: true,
+      is_admin: userData.is_admin ?? false,
     };
     setUser(profile);
     saveSession(profile);
     setIsLoggedIn(true);
+    setIsAdmin(profile.is_admin);
   }, []);
 
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
     setIsLoggedIn(false);
+    setIsAdmin(false);
     localStorage.removeItem("aimigo_session");
     localStorage.removeItem("aimigo_token");
     localStorage.removeItem("aimigo_phone");
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, user, login, logout, isOnline }}>
+    <AuthContext.Provider value={{ isLoggedIn, user, login, logout, isOnline, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

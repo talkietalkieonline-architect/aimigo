@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { createAgent, type AgentCreate } from "@/services/api";
+import { adminCreateAgent, type AgentCreate } from "@/services/api";
 
 /* ══════════════════════════════════════════════════════════════
    Конструктор Агента — создание нового AI-агента
@@ -66,7 +66,7 @@ export default function AgentConstructorModal({ isOpen, onClose, onCreated }: Pr
     };
 
     try {
-      await createAgent(data);
+      await adminCreateAgent(data);
       // Успех — сброс формы
       setStep(1);
       setName("");

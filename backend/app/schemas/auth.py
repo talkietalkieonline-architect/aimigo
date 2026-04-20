@@ -24,3 +24,4 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     user_id: int
     display_name: str
+    is_admin: bool = False

@@ -32,3 +32,12 @@ async def get_current_user(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Пользователь не найден")
 
     return user
+
+
+async def get_admin_user(
+    user: User = Depends(get_current_user),
+) -> User:
+    """Проверить что пользователь — админ"""
+    if not user.is_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Доступ запрещён")
+    return user
