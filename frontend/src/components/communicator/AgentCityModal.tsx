@@ -34,9 +34,11 @@ const TYPES = [
 export default function AgentCityModal({
   isOpen,
   onClose,
+  onOpenBusiness,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  onOpenBusiness?: () => void;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProfession, setSelectedProfession] = useState("Все");
@@ -109,17 +111,31 @@ export default function AgentCityModal({
                 Всего {counts.total} &bull; Бизнес {counts.business} &bull; Жители {counts.citizen}
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{
-                background: "var(--bg-glass)",
-                border: "1px solid var(--bg-glass-border)",
-                color: "var(--text-secondary)",
-              }}
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-2">
+              {onOpenBusiness && (
+                <button
+                  onClick={() => { onClose(); onOpenBusiness(); }}
+                  className="px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all hover:scale-105"
+                  style={{
+                    background: "var(--accent)",
+                    color: "var(--bg-deep)",
+                  }}
+                >
+                  Для бизнеса
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-full flex items-center justify-center"
+                style={{
+                  background: "var(--bg-glass)",
+                  border: "1px solid var(--bg-glass-border)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Поиск */}

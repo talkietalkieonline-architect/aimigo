@@ -164,12 +164,88 @@ frontend/src/
   components/communicator/AgentCityModal ← UPDATED: useAgents
 ```
 
-### Что следующее (Сессия 7)
-1. Установить Docker и запустить `docker compose up` — проверить реальную связку
-2. Коммерческий блок: кнопка "Для бизнеса" в Городе Агентов + ЛК бизнеса
-3. Конструктор агента (MVP)
-4. Подключение LLM (Дворецкий отвечает через GPT/Claude)
-5. Голосовой ввод (Web Speech API → текст → LLM)
+### Сессия 7 (Июнь 2025)
+- [x] **Коммерческий блок** — кнопка «Для бизнеса» в Городе Агентов
+- [x] **ЛК Бизнеса** (BusinessDashboardModal) — список своих агентов, статистика, удаление
+- [x] **Конструктор Агента** (AgentConstructorModal) — 3 шага:
+  - Шаг 1: Имя, профессия, бренд, цвет аватара (14 пресетов)
+  - Шаг 2: Описание + приветственное сообщение
+  - Шаг 3: AI-модель (GPT-4o Mini/GPT-4o) + системный промпт + превью
+- [x] **Backend API конструктора:**
+  - `POST /api/agents` — создание агента с owner_id
+  - `GET /api/agents/my` — мои агенты
+  - `PATCH /api/agents/{id}` — редактирование (только владелец)
+  - `DELETE /api/agents/{id}` — мягкое удаление (только владелец)
+- [x] **Модель Agent расширена:**
+  - `owner_id` (FK на users)
+  - `system_prompt` (инструкция для LLM)
+  - `llm_model` (gpt-4o-mini / gpt-4o)
+  - `greeting` (приветствие)
+- [x] **LLM Service** (app/services/llm.py):
+  - OpenAI GPT через httpx (async)
+  - Системный промпт Дворецкого
+  - Контекст диалога (10 последних сообщений)
+  - Fallback-ответы если API недоступен
+  - Функция `get_agent_reply()` для конкретных агентов
+- [x] **WebSocket чат + LLM:**
+  - Дворецкий отвечает через GPT (асинхронно, не блокирует WS)
+  - Индикатор «печатает...» (typing/typing_stop события)
+  - История для контекста LLM
+  - Ответы сохраняются в БД
+- [x] **Голосовой ввод** (Web Speech API):
+  - Распознавание речи на русском (ru-RU)
+  - Индикатор распознавания (текст под кнопками)
+  - Автоотправка при паузе
+  - Режим always-on: перезапуск после каждой фразы
+  - Короткое нажатие микрофона: вкл/выкл распознавание
+  - Длинное нажатие: always-on / mute
+- [x] **Типы Speech API** (speech.d.ts) — полные TypeScript-декларации
+- [x] **Build проходит чисто** (TypeScript + Next.js)
+
+### API Эндпоинты после Сессии 7 (20 роутов)
+- `POST /api/auth/send-sms` — отправка SMS-кода
+- `POST /api/auth/verify-sms` — проверка кода → JWT
+- `GET /api/agents` — каталог агентов
+- `GET /api/agents/my` — мои агенты (**NEW**)
+- `GET /api/agents/{id}` — карточка агента
+- `POST /api/agents` — создать агента (**NEW**)
+- `PATCH /api/agents/{id}` — редактировать агента (**NEW**)
+- `DELETE /api/agents/{id}` — удалить агента (**NEW**)
+- `GET /api/chat/history` — история сообщений
+- `POST /api/chat/send` — отправка сообщения
+- `GET /api/users/me` — профиль
+- `PATCH /api/users/me` — обновление настроек
+- `WS /ws/chat/{room}` — реалтайм чат + **LLM-ответы**
+- `GET /api/health` — здоровье сервиса
+
+### Архитектура после Сессии 7
+```
+frontend/src/
+  types/speech.d.ts                  ← NEW: Web Speech API типы
+  services/api.ts                    ← UPDATED: CRUD агентов
+  hooks/useChat.ts                   ← UPDATED: typing/typing_stop от сервера
+  app/page.tsx                       ← UPDATED: Business + Constructor модалки
+  components/communicator/
+    AgentCityModal.tsx               ← UPDATED: кнопка «Для бизнеса»
+    BusinessDashboardModal.tsx       ← NEW: ЛК Бизнеса
+    AgentConstructorModal.tsx        ← NEW: Конструктор (3 шага)
+    BottomBar.tsx                    ← UPDATED: Web Speech API голосовой ввод
+
+backend/app/
+  models/agent.py                    ← UPDATED: owner_id, system_prompt, llm_model, greeting
+  schemas/agent.py                   ← UPDATED: AgentCreate, AgentUpdate
+  api/agents.py                      ← UPDATED: CRUD + /my
+  services/llm.py                    ← NEW: LLM Service (OpenAI GPT)
+  websocket/chat_ws.py               ← UPDATED: LLM-ответы Дворецкого
+  core/config.py                     ← UPDATED: OPENAI_API_KEY, OPENAI_MODEL, REDIS_URL
+```
+
+### Что следующее (Сессия 8)
+1. Docker compose up — проверка полной связки
+2. Чат с конкретным агентом (1-на-1 комнаты)
+3. Редактор агента в ЛК
+4. Голосовой вывод (TTS для ответов агентов)
+5. Подписка / тарифы (UI)
 
 ---
 

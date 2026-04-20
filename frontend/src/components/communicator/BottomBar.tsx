@@ -66,6 +66,77 @@ export default function BottomBar({
     }
   };
 
+  // === Web Speech API распознавание речи ===
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const [voiceText, setVoiceText] = useState("");
+
+  const startRecognition = useCallback(() => {
+    const SpeechRecognition = (window as unknown as Record<string, unknown>).SpeechRecognition || (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.warn("[voice] Web Speech API не поддерживается");
+      return;
+    }
+
+    if (recognitionRef.current) {
+      recognitionRef.current.abort();
+    }
+
+    const recognition = new (SpeechRecognition as unknown as { new(): SpeechRecognition })();
+    recognition.lang = "ru-RU";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let transcript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setVoiceText(transcript);
+
+      // Если результат финальный и не always-on — отправляем
+      const lastResult = event.results[event.results.length - 1];
+      if (lastResult.isFinal && transcript.trim()) {
+        onSendMessage(transcript.trim());
+        setVoiceText("");
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.warn("[voice] Error:", event.error);
+      if (event.error !== "aborted") {
+        setMicState("off");
+      }
+    };
+
+    recognition.onend = () => {
+      // Если always-on — перезапускаем
+      setMicState((prev) => {
+        if (prev === "always") {
+          setTimeout(() => startRecognition(), 300);
+          return prev;
+        }
+        return "off";
+      });
+    };
+
+    recognition.start();
+    recognitionRef.current = recognition;
+  }, [onSendMessage]);
+
+  const stopRecognition = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.abort();
+      recognitionRef.current = null;
+    }
+    // Если есть неотправленный текст — отправляем
+    setVoiceText((prev) => {
+      if (prev.trim()) {
+        onSendMessage(prev.trim());
+      }
+      return "";
+    });
+  }, [onSendMessage]);
+
   // === Микрофон: короткое / длинное нажатие ===
   const handleMicDown = useCallback(() => {
     isLongPress.current = false;
@@ -73,29 +144,45 @@ export default function BottomBar({
       isLongPress.current = true;
       // Длинное нажатие
       setMicState((prev) => {
-        if (prev === "off") return "always";  // Выкл → always-on
-        if (prev === "on") return "mute";     // Вкл → mute
-        if (prev === "always") return "mute"; // always → mute
+        if (prev === "off") {
+          startRecognition();
+          return "always";
+        }
+        if (prev === "on" || prev === "always") {
+          stopRecognition();
+          return "mute";
+        }
         return prev;
       });
     }, LONG_PRESS_MS);
-  }, []);
+  }, [startRecognition, stopRecognition]);
 
   const handleMicUp = useCallback(() => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
-    if (isLongPress.current) return; // Длинное уже обработано
+    if (isLongPress.current) return;
     // Короткое нажатие
     setMicState((prev) => {
-      if (prev === "off") return "on";     // Выкл → вкл
-      if (prev === "on") return "off";     // Вкл → выкл
-      if (prev === "always") return "off"; // always → выкл
-      if (prev === "mute") return "off";   // mute → снять mute
+      if (prev === "off") {
+        startRecognition();
+        return "on";
+      }
+      if (prev === "on") {
+        stopRecognition();
+        return "off";
+      }
+      if (prev === "always") {
+        stopRecognition();
+        return "off";
+      }
+      if (prev === "mute") {
+        return "off";
+      }
       return "off";
     });
-  }, []);
+  }, [startRecognition, stopRecognition]);
 
   // Визуал микрофона
   const micVisual = {
@@ -377,9 +464,21 @@ export default function BottomBar({
         </button>
       </div>
 
-      {/* Подсказка состояния микрофона */}
+      {/* Подсказка состояния микрофона + распознанный текст */}
       {micState !== "off" && (
-        <div className="flex justify-center pb-1">
+        <div className="flex flex-col items-center gap-1 pb-1">
+          {voiceText && (micState === "on" || micState === "always") && (
+            <div
+              className="text-[12px] px-4 py-1 rounded-full max-w-[80%] truncate animate-fade-in"
+              style={{
+                background: "rgba(212,168,67,0.08)",
+                color: "var(--text-secondary)",
+                border: "1px solid rgba(212,168,67,0.15)",
+              }}
+            >
+              {voiceText}
+            </div>
+          )}
           <span
             className="text-[9px] uppercase tracking-wider px-3 py-0.5 rounded-full animate-fade-in"
             style={{

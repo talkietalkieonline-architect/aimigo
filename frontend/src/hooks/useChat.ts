@@ -90,6 +90,12 @@ export function useChat(initialRoom: string = "general"): UseChatResult {
           timestamp: new Date(data.created_at),
         };
         setMessages((prev) => [...prev, chatMsg]);
+        setIsTyping(false);
+      } else if (data.type === "typing") {
+        // Агент/Дворецкий печатает...
+        setIsTyping(true);
+      } else if (data.type === "typing_stop") {
+        setIsTyping(false);
       }
       // Можно обработать user_joined, user_left
     });

@@ -117,6 +117,20 @@ export interface AgentOut {
   aimigo_link?: string;
   rating: number;
   rating_count: number;
+  greeting?: string;
+  owner_id?: number;
+}
+
+export interface AgentCreate {
+  name: string;
+  profession: string;
+  brand?: string;
+  description?: string;
+  color?: string;
+  agent_type?: string;
+  system_prompt?: string;
+  llm_model?: string;
+  greeting?: string;
 }
 
 export interface AgentListResponse {
@@ -144,6 +158,32 @@ export function getAgents(params?: {
 /** Карточка агента */
 export function getAgent(id: number): Promise<AgentOut> {
   return apiFetch(`/api/agents/${id}`);
+}
+
+/** Мои агенты (созданные мной) */
+export function getMyAgents(): Promise<AgentOut[]> {
+  return apiFetch("/api/agents/my");
+}
+
+/** Создать агента */
+export function createAgent(data: AgentCreate): Promise<AgentOut> {
+  return apiFetch("/api/agents", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+/** Обновить агента */
+export function updateAgent(id: number, data: Partial<AgentCreate>): Promise<AgentOut> {
+  return apiFetch(`/api/agents/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+/** Удалить агента */
+export function deleteAgent(id: number): Promise<void> {
+  return apiFetch(`/api/agents/${id}`, { method: "DELETE" });
 }
 
 // ═══════════════════════════════════════════════

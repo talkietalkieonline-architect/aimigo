@@ -15,6 +15,8 @@ import SettingsModal from "@/components/communicator/SettingsModal";
 import MyAgentsModal from "@/components/communicator/MyAgentsModal";
 import AgentCityModal from "@/components/communicator/AgentCityModal";
 import ContactsModal from "@/components/communicator/ContactsModal";
+import BusinessDashboardModal from "@/components/communicator/BusinessDashboardModal";
+import AgentConstructorModal from "@/components/communicator/AgentConstructorModal";
 
 type AppScreen = "splash" | "login" | "communicator";
 
@@ -27,6 +29,8 @@ export default function Home() {
   const [agentsOpen, setAgentsOpen] = useState(false);
   const [cityOpen, setCityOpen] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
+  const [businessOpen, setBusinessOpen] = useState(false);
+  const [constructorOpen, setConstructorOpen] = useState(false);
   const [activeMode, setActiveMode] = useState("Общение");
   const [activeRoom, setActiveRoom] = useState("Общая комната");
   const [topBarH, setTopBarH] = useState(80);
@@ -123,12 +127,37 @@ export default function Home() {
       <AgentCityModal
         isOpen={cityOpen}
         onClose={() => setCityOpen(false)}
+        onOpenBusiness={() => {
+          setCityOpen(false);
+          setBusinessOpen(true);
+        }}
       />
 
       {/* Мои контакты */}
       <ContactsModal
         isOpen={contactsOpen}
         onClose={() => setContactsOpen(false)}
+      />
+
+      {/* ЛК Бизнеса */}
+      <BusinessDashboardModal
+        isOpen={businessOpen}
+        onClose={() => setBusinessOpen(false)}
+        onCreateAgent={() => {
+          setBusinessOpen(false);
+          setConstructorOpen(true);
+        }}
+      />
+
+      {/* Конструктор Агента */}
+      <AgentConstructorModal
+        isOpen={constructorOpen}
+        onClose={() => setConstructorOpen(false)}
+        onCreated={() => {
+          // После создания — открываем ЛК Бизнеса
+          setConstructorOpen(false);
+          setBusinessOpen(true);
+        }}
       />
     </div>
   );

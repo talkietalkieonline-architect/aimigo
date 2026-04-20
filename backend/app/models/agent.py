@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, String, Text
+from sqlalchemy import Boolean, DateTime, Float, Integer, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -28,6 +28,20 @@ class Agent(Base):
     rating_count: Mapped[int] = mapped_column(default=0)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # Владелец агента (бизнес-пользователь). NULL = системный агент
+    owner_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True, index=True
+    )
+
+    # LLM: системный промпт для этого агента
+    system_prompt: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # LLM: модель (gpt-4o-mini / claude-3-haiku / и т.д.)
+    llm_model: Mapped[str] = mapped_column(String(50), default="gpt-4o-mini")
+
+    # Приветственное сообщение
+    greeting: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

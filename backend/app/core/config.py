@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     SMS_CODE_EXPIRE_MINUTES: int = 5
     SMS_CODE_LENGTH: int = 4
 
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    # LLM
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001"]
 
