@@ -19,7 +19,7 @@ export default function TopBar({ tickerActive, onHeightChange }: { tickerActive:
     <div
       ref={barRef}
       className="fixed top-0 left-0 right-0 px-4 pt-3 pb-2"
-      style={{ zIndex: 50, background: "var(--bar-bg)" }}
+      style={{ zIndex: 40, background: "var(--bar-bg)" }}
     >
       {/* Лого */}
       <div className="flex items-baseline gap-3 mb-1">

@@ -146,9 +146,9 @@ export default function Home() {
       {/* Верхняя панель */}
       <TopBar tickerActive={true} onHeightChange={setTopBarH} />
 
-      {/* Боковые язычки */}
-      <SideTab side="left" onClick={() => setLeftOpen(!leftOpen)} />
-      <SideTab side="right" onClick={() => setRightOpen(!rightOpen)} />
+      {/* Боковые язычки — всегда видны, сдвигаются с панелью */}
+      <SideTab side="left" panelOpen={leftOpen} onClick={() => setLeftOpen(!leftOpen)} />
+      <SideTab side="right" panelOpen={rightOpen} onClick={() => setRightOpen(!rightOpen)} />
 
       {/* Левая панель — Режимы + Комнаты */}
       <LeftPanel

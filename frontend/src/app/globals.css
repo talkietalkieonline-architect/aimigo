@@ -238,3 +238,42 @@ body {
 input::placeholder {
   color: var(--text-muted);
 }
+
+/* Пульсация микрофона (always-on) */
+@keyframes pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 25px var(--accent-glow-strong); }
+  50% { transform: scale(1.08); box-shadow: 0 0 40px var(--accent-glow-strong); }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Адаптив под мобильные
+   ══════════════════════════════════════════════════════════════ */
+
+/* Мобильные устройства */
+@media (max-width: 640px) {
+  /* Нижняя панель компактнее */
+  .bottom-bar-buttons {
+    gap: 0.25rem;
+  }
+
+  /* Пузыри шире на узких экранах */
+  .chat-bubble-wrap {
+    max-width: 85% !important;
+  }
+}
+
+/* Планшеты */
+@media (max-width: 768px) {
+  /* Уменьшаем отступы чата */
+  .chat-scroll-area {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
+
+/* Safe area для iPhone (notch) */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .bottom-bar-safe {
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  }
+}
