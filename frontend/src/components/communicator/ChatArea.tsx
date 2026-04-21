@@ -351,13 +351,17 @@ export default function ChatArea({
   isTyping,
   topPad = 80,
   bottomPad = 130,
+  autoSpeak = false,
 }: {
   messages: ChatMessage[];
   isTyping: boolean;
   topPad?: number;
   bottomPad?: number;
+  /** Автоозвучка ответов агентов (голосовой режим) */
+  autoSpeak?: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const prevMsgCountRef = useRef(messages.length);
 
   // Автоскролл к последнему сообщению
   useEffect(() => {
@@ -365,6 +369,26 @@ export default function ChatArea({
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
+
+  // TTS — автоозвучка новых сообщений агентов
+  useEffect(() => {
+    if (!autoSpeak) { prevMsgCountRef.current = messages.length; return; }
+    if (messages.length <= prevMsgCountRef.current) { prevMsgCountRef.current = messages.length; return; }
+
+    // Новые сообщения с последнего известного
+    const newMsgs = messages.slice(prevMsgCountRef.current);
+    prevMsgCountRef.current = messages.length;
+
+    // Озвучиваем только ответы агентов / дворецкого
+    for (const msg of newMsgs) {
+      if (msg.sender !== "user" && msg.text && "speechSynthesis" in window) {
+        const utt = new SpeechSynthesisUtterance(msg.text);
+        utt.lang = "ru-RU";
+        utt.rate = 1;
+        window.speechSynthesis.speak(utt);
+      }
+    }
+  }, [messages, autoSpeak]);
 
   const isUser = (s: string) => s === "user";
 

@@ -27,14 +27,47 @@ const BUTLER_REPLIES = [
   "Принято! Работаю над этим.",
 ];
 
-const WELCOME_MESSAGE: ChatMessage = {
-  id: "welcome-1",
-  sender: "butler",
-  name: "Дворецкий",
-  text: "Добро пожаловать в Aimigo! Я ваш Дворецкий. Могу рассказать о сервисе, найти нужного агента или просто поболтать.",
-  color: "var(--accent)",
-  timestamp: new Date(),
-};
+/** Приветствия Дворецкого для возвращающихся пользователей (не повторяться) */
+const RETURNING_GREETINGS = [
+  (name: string) => `С возвращением, ${name}! Чем могу помочь сегодня?`,
+  (name: string) => `Привет, ${name}! Рад вас снова видеть. Что нового?`,
+  (name: string) => `Здравствуйте, ${name}! Я на месте — спрашивайте что угодно.`,
+  (name: string) => `${name}, рад вас слышать! Найти агента или просто поговорим?`,
+  (name: string) => `О, ${name}! Хорошо, что зашли. Сегодня в Городе Агентов много интересного!`,
+];
+
+const NEW_USER_WELCOME = "Добро пожаловать в Aimigo! Я ваш Дворецкий — личный помощник в мире AI-агентов. Могу рассказать о сервисе, найти нужного агента или просто поболтать. Говорите голосом или пишите — как вам удобно!";
+
+/** Создаём приветствие в зависимости от того, новый ли пользователь */
+function buildWelcome(hasHistory: boolean): ChatMessage {
+  let text = NEW_USER_WELCOME;
+
+  if (hasHistory) {
+    // Возвращающийся пользователь — получаем имя из сессии
+    let name = "";
+    try {
+      const session = JSON.parse(localStorage.getItem("aimigo_session") || "{}");
+      name = session.displayName || "";
+    } catch { /* ignore */ }
+    // Выбираем случайное приветствие, но не то же, что в прошлый раз
+    const lastIdx = parseInt(localStorage.getItem("aimigo_greet_idx") || "-1", 10);
+    let idx = Math.floor(Math.random() * RETURNING_GREETINGS.length);
+    if (idx === lastIdx && RETURNING_GREETINGS.length > 1) {
+      idx = (idx + 1) % RETURNING_GREETINGS.length;
+    }
+    localStorage.setItem("aimigo_greet_idx", String(idx));
+    text = RETURNING_GREETINGS[idx](name || "друг");
+  }
+
+  return {
+    id: "welcome-1",
+    sender: "butler",
+    name: "Дворецкий",
+    text,
+    color: "var(--accent)",
+    timestamp: new Date(),
+  };
+}
 
 /** Конвертация сообщения API → ChatMessage */
 function apiMsgToChat(msg: MessageOut): ChatMessage {
@@ -59,7 +92,7 @@ interface UseChatResult {
 }
 
 export function useChat(initialRoom: string = "general"): UseChatResult {
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [buildWelcome(false)]);
   const [isTyping, setIsTyping] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [room, setRoom] = useState(initialRoom);
@@ -130,9 +163,12 @@ export function useChat(initialRoom: string = "general"): UseChatResult {
   const loadHistory = useCallback(async () => {
     try {
       const history = await getChatHistory(room);
+      const welcome = buildWelcome(history.length > 0);
       if (history.length > 0) {
         const chatMessages = history.map(apiMsgToChat);
-        setMessages([WELCOME_MESSAGE, ...chatMessages]);
+        setMessages([welcome, ...chatMessages]);
+      } else {
+        setMessages([welcome]);
       }
     } catch {
       // API недоступен — оставляем welcome message

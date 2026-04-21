@@ -15,6 +15,7 @@ export default function BottomBar({
   onSendMessage,
   onAttachMedia,
   onHeightChange,
+  onMicStateChange,
 }: {
   onSettingsClick: () => void;
   onContactsClick: () => void;
@@ -22,6 +23,7 @@ export default function BottomBar({
   onSendMessage: (text: string) => void;
   onAttachMedia: (file: File) => void;
   onHeightChange?: (h: number) => void;
+  onMicStateChange?: (active: boolean) => void;
 }) {
   const [micState, setMicState] = useState<MicState>("off");
   const [showTextInput, setShowTextInput] = useState(false);
@@ -74,7 +76,10 @@ export default function BottomBar({
   const startRecognitionRef = useRef<(() => void) | undefined>(undefined);
 
   useEffect(() => { onSendRef.current = onSendMessage; }, [onSendMessage]);
-  useEffect(() => { micStateRef.current = micState; }, [micState]);
+  useEffect(() => {
+    micStateRef.current = micState;
+    onMicStateChange?.(micState === "on" || micState === "always");
+  }, [micState, onMicStateChange]);
 
   const startRecognition = useCallback(() => {
     const SR = (window as unknown as Record<string, unknown>).SpeechRecognition || (window as unknown as Record<string, unknown>).webkitSpeechRecognition;

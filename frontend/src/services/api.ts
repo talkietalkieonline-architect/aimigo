@@ -135,6 +135,74 @@ export interface AgentCreate {
   greeting?: string;
 }
 
+/** Полные данные агента для настройки (ЛК бизнеса + личный агент) */
+export interface AgentFullOut extends AgentOut {
+  // AI
+  system_prompt?: string;
+  llm_model: string;
+  is_active: boolean;
+  created_at?: string;
+  // Голос
+  voice_id?: string;
+  voice_speed: number;
+  voice_pitch: number;
+  // Внешность
+  appearance_preset?: string;
+  appearance_face?: string;
+  appearance_hair?: string;
+  appearance_skin?: string;
+  appearance_body?: string;
+  // Одежда
+  outfit_style?: string;
+  outfit_top?: string;
+  outfit_bottom?: string;
+  outfit_shoes?: string;
+  outfit_accessory?: string;
+  // Манеры
+  manner_style: string;
+  manner_temperament: string;
+  manner_humor: boolean;
+  manner_emoji_use: boolean;
+  // Знания
+  knowledge_text?: string;
+  knowledge_urls?: string;
+  knowledge_files?: string;
+}
+
+/** Обновление настроек персонажа агента */
+export interface AgentPersonaUpdate {
+  // AI / текст
+  description?: string;
+  greeting?: string;
+  system_prompt?: string;
+  llm_model?: string;
+  // Голос
+  voice_id?: string;
+  voice_speed?: number;
+  voice_pitch?: number;
+  // Внешность
+  appearance_preset?: string;
+  appearance_face?: string;
+  appearance_hair?: string;
+  appearance_skin?: string;
+  appearance_body?: string;
+  // Одежда
+  outfit_style?: string;
+  outfit_top?: string;
+  outfit_bottom?: string;
+  outfit_shoes?: string;
+  outfit_accessory?: string;
+  // Манеры
+  manner_style?: string;
+  manner_temperament?: string;
+  manner_humor?: boolean;
+  manner_emoji_use?: boolean;
+  // Знания
+  knowledge_text?: string;
+  knowledge_urls?: string;
+  knowledge_files?: string;
+}
+
 export interface AgentListResponse {
   agents: AgentOut[];
   total: number;
@@ -162,13 +230,13 @@ export function getAgent(id: number): Promise<AgentOut> {
   return apiFetch(`/api/agents/${id}`);
 }
 
-/** Мои агенты (созданные мной) */
-export function getMyAgents(): Promise<AgentOut[]> {
+/** Мои агенты (созданные мной) — полные данные для настройки */
+export function getMyAgents(): Promise<AgentFullOut[]> {
   return apiFetch("/api/agents/my");
 }
 
-/** Обновить настройки агента (бизнес) */
-export function updateAgent(id: number, data: Partial<AgentCreate>): Promise<AgentOut> {
+/** Обновить настройки агента (бизнес / личный) */
+export function updateAgent(id: number, data: AgentPersonaUpdate): Promise<AgentFullOut> {
   return apiFetch(`/api/agents/${id}`, {
     method: "PATCH",
     body: JSON.stringify(data),

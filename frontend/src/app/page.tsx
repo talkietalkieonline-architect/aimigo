@@ -33,6 +33,7 @@ export default function Home() {
   const [activeRoom, setActiveRoom] = useState("Общая комната");
   const [topBarH, setTopBarH] = useState(80);
   const [bottomBarH, setBottomBarH] = useState(130);
+  const [micActive, setMicActive] = useState(false);
 
   // Чат — через хук (WebSocket + offline fallback)
   const { messages, isTyping, isConnected, sendMessage, attachMedia } = useChat("general");
@@ -93,7 +94,7 @@ export default function Home() {
       <RightPanel isOpen={rightOpen} onClose={closeRight} />
 
       {/* Центральная область чата */}
-      <ChatArea messages={messages} isTyping={isTyping} topPad={topBarH} bottomPad={bottomBarH} />
+      <ChatArea messages={messages} isTyping={isTyping} topPad={topBarH} bottomPad={bottomBarH} autoSpeak={micActive} />
 
       {/* Нижняя панель — ввод + кнопки */}
       <BottomBar
@@ -103,6 +104,7 @@ export default function Home() {
         onSendMessage={sendMessage}
         onAttachMedia={attachMedia}
         onHeightChange={setBottomBarH}
+        onMicStateChange={(active) => setMicActive(active)}
       />
 
       {/* Центр Управления */}

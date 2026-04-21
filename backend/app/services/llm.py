@@ -97,6 +97,69 @@ async def get_llm_reply(
         return random.choice(FALLBACK_REPLIES)
 
 
+# Маппинг манер для промпта
+_MANNER_LABELS = {
+    "friendly": "дружелюбно и непринуждённо",
+    "formal": "формально и профессионально",
+    "playful": "игриво и с юмором",
+    "strict": "строго и по делу",
+}
+_TEMPERAMENT_LABELS = {
+    "calm": "спокойный и размеренный",
+    "balanced": "сбалансированный",
+    "energetic": "энергичный и эмоциональный",
+    "reserved": "сдержанный и лаконичный",
+}
+
+
+def _build_agent_prompt(
+    agent_name: str,
+    agent_profession: str,
+    agent_description: str,
+    system_prompt: Optional[str],
+    manner_style: str = "friendly",
+    manner_temperament: str = "balanced",
+    manner_humor: bool = True,
+    manner_emoji_use: bool = True,
+    knowledge_text: Optional[str] = None,
+) -> str:
+    """Собираем промпт агента с учётом манер, знаний и пользовательского system_prompt."""
+
+    # База
+    parts = [f"Ты — {agent_name}, {agent_profession}."]
+    if agent_description:
+        parts.append(agent_description)
+
+    # Манеры
+    style = _MANNER_LABELS.get(manner_style, "дружелюбно")
+    temp = _TEMPERAMENT_LABELS.get(manner_temperament, "сбалансированный")
+    parts.append(f"\nОбщайся {style}. Твой темперамент: {temp}.")
+
+    if manner_humor:
+        parts.append("Можно использовать юмор и шутки, если уместно.")
+    else:
+        parts.append("Не шути, будь серьёзным.")
+
+    if manner_emoji_use:
+        parts.append("Используй эмодзи умеренно.")
+    else:
+        parts.append("Не используй эмодзи.")
+
+    # Знания
+    if knowledge_text and knowledge_text.strip():
+        kb = knowledge_text.strip()[:8000]  # ограничиваем
+        parts.append(f"\n=== БАЗА ЗНАНИЙ ===\n{kb}\n=== КОНЕЦ БАЗЫ ЗНАНИЙ ===")
+        parts.append("Отвечай на основе базы знаний. Если информации нет — честно скажи, что не знаешь.")
+
+    # Пользовательский system_prompt (дополняет)
+    if system_prompt and system_prompt.strip():
+        parts.append(f"\nДополнительные инструкции:\n{system_prompt.strip()}")
+
+    parts.append("\nОтвечай кратко — 1-3 предложения, если не просят подробнее. Говори по-русски.")
+
+    return "\n".join(parts)
+
+
 async def get_agent_reply(
     agent_name: str,
     agent_profession: str,
@@ -105,19 +168,29 @@ async def get_agent_reply(
     llm_model: str,
     user_message: str,
     conversation_history: Optional[list] = None,
+    # Манеры
+    manner_style: str = "friendly",
+    manner_temperament: str = "balanced",
+    manner_humor: bool = True,
+    manner_emoji_use: bool = True,
+    # Знания
+    knowledge_text: Optional[str] = None,
 ) -> str:
     """
     Получить ответ от конкретного агента.
-    Если у агента нет своего system_prompt — генерируем из его данных.
+    Собирает промпт из манер, знаний и system_prompt.
     """
-    if system_prompt:
-        prompt = system_prompt
-    else:
-        prompt = f"""Ты — {agent_name}, {agent_profession}.
-{agent_description}
-
-Отвечай от имени {agent_name}. Будь профессиональным и полезным.
-Ответы давай кратко — 1-3 предложения. Говори по-русски."""
+    prompt = _build_agent_prompt(
+        agent_name=agent_name,
+        agent_profession=agent_profession,
+        agent_description=agent_description,
+        system_prompt=system_prompt,
+        manner_style=manner_style,
+        manner_temperament=manner_temperament,
+        manner_humor=manner_humor,
+        manner_emoji_use=manner_emoji_use,
+        knowledge_text=knowledge_text,
+    )
 
     return await get_llm_reply(
         user_message=user_message,

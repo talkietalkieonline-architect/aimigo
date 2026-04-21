@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { getMyAgents, type AgentFullOut } from "@/services/api";
 
 interface Agent {
   id: string;
@@ -11,12 +12,12 @@ interface Agent {
 }
 
 const DEMO_AGENTS: Agent[] = [
-  { id: "1", name: "Тим", profession: "Консультант", brand: "Adidas", color: "#4CAF50", group: "Консультанты" },
-  { id: "2", name: "Алиса", profession: "Продавец", brand: "Zara", color: "#E91E63", group: "Консультанты" },
-  { id: "3", name: "Макс", profession: "Юрист ПДД", brand: "Aimigo", color: "#FF9800", group: "Другие" },
-  { id: "4", name: "Психолог", profession: "Психолог", brand: "Aimigo", color: "#9C27B0", group: "Рекомендованные" },
-  { id: "5", name: "Новости", profession: "Информатор", brand: "Aimigo", color: "#2196F3", group: "Рекомендованные" },
-  { id: "6", name: "Лена", profession: "Стилист", brand: "H&M", color: "#F44336", group: "Популярные" },
+  { id: "d1", name: "Тим", profession: "Консультант", brand: "Adidas", color: "#4CAF50", group: "Консультанты" },
+  { id: "d2", name: "Алиса", profession: "Продавец", brand: "Zara", color: "#E91E63", group: "Консультанты" },
+  { id: "d3", name: "Макс", profession: "Юрист ПДД", brand: "Aimigo", color: "#FF9800", group: "Другие" },
+  { id: "d4", name: "Психолог", profession: "Психолог", brand: "Aimigo", color: "#9C27B0", group: "Рекомендованные" },
+  { id: "d5", name: "Новости", profession: "Информатор", brand: "Aimigo", color: "#2196F3", group: "Рекомендованные" },
+  { id: "d6", name: "Лена", profession: "Стилист", brand: "H&M", color: "#F44336", group: "Популярные" },
 ];
 
 const GROUPS = ["Личные", "Консультанты", "Рекомендованные", "Популярные", "Другие"];
@@ -31,6 +32,22 @@ export default function MyAgentsModal({
   onOpenCity: () => void;
 }) {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [personalAgents, setPersonalAgents] = useState<AgentFullOut[]>([]);
+
+  /** Загрузка личных агентов (привязанных к пользователю) */
+  const loadPersonal = useCallback(async () => {
+    try {
+      const agents = await getMyAgents();
+      // Личные — тип citizen, привязанные к пользователю
+      setPersonalAgents(agents.filter((a) => a.agent_type === "citizen"));
+    } catch {
+      // offline
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) loadPersonal();
+  }, [isOpen, loadPersonal]);
 
   if (!isOpen) return null;
 
@@ -108,17 +125,62 @@ export default function MyAgentsModal({
             {/* Группы агентов */}
             {GROUPS.map((group) => {
               const agents = DEMO_AGENTS.filter((a) => a.group === group);
-              if (agents.length === 0 && group !== "Личные") return null;
+
+              {/* === Личные агенты (API + подписка) === */}
+              if (group === "Личные") {
+                return (
+                  <div key={group} className="mb-4">
+                    <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "var(--text-muted)" }}>
+                      {group}
+                    </p>
+                    {personalAgents.length > 0 ? (
+                      <div className="flex flex-wrap gap-3">
+                        {personalAgents.map((agent) => (
+                          <div
+                            key={agent.id}
+                            className="flex flex-col items-center cursor-pointer transition-all hover:scale-105"
+                            onClick={() => setSelectedAgent(String(agent.id))}
+                            style={{ width: "60px" }}
+                          >
+                            <div
+                              className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-bold mb-1"
+                              style={{ background: `${agent.color}22`, border: `1.5px solid ${agent.color}44`, color: agent.color }}
+                            >
+                              {agent.name[0]}
+                            </div>
+                            <span className="text-[10px] text-center leading-tight" style={{ color: "var(--text-secondary)" }}>
+                              {agent.name}
+                            </span>
+                            <span className="text-[9px]" style={{ color: "var(--accent)" }}>
+                              Личный
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-glass)", border: "1px solid var(--bg-glass-border)" }}>
+                        <p className="text-[12px] mb-1" style={{ color: "var(--text-secondary)" }}>
+                          Создайте своего AI-агента
+                        </p>
+                        <p className="text-[11px] leading-relaxed mb-2" style={{ color: "var(--text-muted)" }}>
+                          Личный агент с вашим характером, голосом и внешностью — доступно по подписке.
+                        </p>
+                        <button className="px-4 py-2 rounded-xl text-[12px] font-medium transition-all hover:scale-[1.02]"
+                          style={{ background: "var(--accent)", color: "var(--bg-deep)" }}>
+                          Подписаться
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              if (agents.length === 0) return null;
               return (
                 <div key={group} className="mb-4">
                   <p className="text-[10px] uppercase tracking-[0.2em] mb-2" style={{ color: "var(--text-muted)" }}>
                     {group}
                   </p>
-                  {group === "Личные" && agents.length === 0 && (
-                    <p className="text-xs px-2 mb-2" style={{ color: "var(--text-muted)" }}>
-                      Пока пусто — доступно по подписке
-                    </p>
-                  )}
                   <div className="flex flex-wrap gap-3">
                     {agents.map((agent) => (
                       <div
