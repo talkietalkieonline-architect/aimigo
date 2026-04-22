@@ -77,6 +77,7 @@ function saveSession(user: Partial<UserProfile>) {
       phone: user.phone,
       theme: user.theme,
       avatarColor: user.avatar_color,
+      isAdmin: user.is_admin || false,
       expires: Date.now() + 30 * 24 * 60 * 60 * 1000,
     })
   );
@@ -111,16 +112,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         })
         .catch(() => {
           // API недоступен — используем данные из localStorage
+          const savedData = session.user as Record<string, unknown>;
           setUser({
             id: session.user.id ?? 0,
-            phone: (session.user as Record<string, unknown>).phone as string ?? "",
+            phone: savedData.phone as string ?? "",
             display_name: session.user.display_name ?? "Пользователь",
             theme: session.user.theme ?? "noir-gold",
             avatar_color: session.user.avatar_color ?? "#d4a843",
             is_online: true,
+            is_admin: !!savedData.isAdmin,
           } as UserProfile);
           setIsOnline(false);
           setIsLoggedIn(true);
+          setIsAdmin(!!savedData.isAdmin);
         });
     } else {
       // Нет токена, но есть сессия (offline-вход)
