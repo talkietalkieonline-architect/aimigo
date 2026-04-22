@@ -1,8 +1,9 @@
 """
-LLM Service — центральный модуль для взаимодействия с языковыми моделями.
-Поддерживает OpenAI (GPT), с возможностью расширения на Claude, Gemini и т.д.
+LLM Service — мульти-провайдер: OpenAI, Gemini, Groq.
+Автовыбор по наличию ключей.
 """
 import json
+import random
 from typing import Optional
 
 import httpx
@@ -31,69 +32,124 @@ FALLBACK_REPLIES = [
 ]
 
 
+def get_active_provider() -> dict:
+    """Определяем активный провайдер по наличию ключей"""
+    pref = settings.DEFAULT_LLM_PROVIDER
+    providers = {
+        "gemini": {"key": settings.GEMINI_API_KEY, "model": settings.GEMINI_MODEL, "name": "gemini"},
+        "openai": {"key": settings.OPENAI_API_KEY, "model": settings.OPENAI_MODEL, "name": "openai"},
+        "groq":   {"key": settings.GROQ_API_KEY,   "model": settings.GROQ_MODEL,   "name": "groq"},
+    }
+    # Сначала предпочтительный
+    if pref in providers and providers[pref]["key"]:
+        return providers[pref]
+    # Потом любой с ключом
+    for p in providers.values():
+        if p["key"]:
+            return p
+    return {"key": "", "model": "none", "name": "none"}
+
+
+async def _call_openai(messages: list, model: str, api_key: str) -> str:
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        r = await client.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={"model": model, "messages": messages, "max_tokens": 500, "temperature": 0.7},
+        )
+        if r.status_code != 200:
+            print(f"[llm] OpenAI error: {r.status_code} {r.text[:200]}")
+            return ""
+        return r.json()["choices"][0]["message"]["content"].strip()
+
+
+async def _call_gemini(messages: list, model: str, api_key: str) -> str:
+    # Gemini использует другой формат: contents[{role, parts}]
+    contents = []
+    system_text = ""
+    for m in messages:
+        if m["role"] == "system":
+            system_text = m["content"]
+        else:
+            role = "user" if m["role"] == "user" else "model"
+            contents.append({"role": role, "parts": [{"text": m["content"]}]})
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        body = {"contents": contents, "generationConfig": {"maxOutputTokens": 500, "temperature": 0.7}}
+        if system_text:
+            body["systemInstruction"] = {"parts": [{"text": system_text}]}
+        r = await client.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}",
+            headers={"Content-Type": "application/json"},
+            json=body,
+        )
+        if r.status_code != 200:
+            print(f"[llm] Gemini error: {r.status_code} {r.text[:200]}")
+            return ""
+        data = r.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+
+async def _call_groq(messages: list, model: str, api_key: str) -> str:
+    # Groq использует OpenAI-совместимый API
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        r = await client.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={"model": model, "messages": messages, "max_tokens": 500, "temperature": 0.7},
+        )
+        if r.status_code != 200:
+            print(f"[llm] Groq error: {r.status_code} {r.text[:200]}")
+            return ""
+        return r.json()["choices"][0]["message"]["content"].strip()
+
+
 async def get_llm_reply(
     user_message: str,
     system_prompt: Optional[str] = None,
     model: Optional[str] = None,
     conversation_history: Optional[list] = None,
 ) -> str:
-    """
-    Получить ответ от LLM.
-    
-    Args:
-        user_message: Сообщение пользователя
-        system_prompt: Системный промпт (None = Дворецкий по умолчанию)
-        model: Модель LLM (None = из настроек)
-        conversation_history: История диалога [{role, content}, ...]
-    
-    Returns:
-        Текст ответа от LLM
-    """
-    if not settings.OPENAI_API_KEY:
-        # LLM не настроен — fallback
-        import random
+    """Получить ответ от LLM. Автовыбор провайдера."""
+    provider = get_active_provider()
+    if not provider["key"]:
         return random.choice(FALLBACK_REPLIES)
 
     prompt = system_prompt or BUTLER_SYSTEM_PROMPT
-    llm_model = model or settings.OPENAI_MODEL
-
-    # Собираем сообщения
     messages = [{"role": "system", "content": prompt}]
-
-    # Добавляем историю диалога (последние 10 сообщений для контекста)
     if conversation_history:
         messages.extend(conversation_history[-10:])
-
     messages.append({"role": "user", "content": user_message})
 
+    llm_model = model or provider["model"]
+    pname = provider["name"]
+    # Если модель явно gemini-*/gpt-*/llama-*, определяем провайдер по имени
+    if llm_model.startswith("gemini"):
+        pname = "gemini"
+    elif llm_model.startswith(("gpt-", "o1", "o3")):
+        pname = "openai"
+    elif llm_model.startswith(("llama", "mixtral")):
+        pname = "groq"
+
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": llm_model,
-                    "messages": messages,
-                    "max_tokens": 500,
-                    "temperature": 0.7,
-                },
-            )
-
-            if response.status_code != 200:
-                print(f"[llm] OpenAI error: {response.status_code} {response.text[:200]}")
-                import random
+        if pname == "gemini" and settings.GEMINI_API_KEY:
+            reply = await _call_gemini(messages, llm_model, settings.GEMINI_API_KEY)
+        elif pname == "groq" and settings.GROQ_API_KEY:
+            reply = await _call_groq(messages, llm_model, settings.GROQ_API_KEY)
+        elif pname == "openai" and settings.OPENAI_API_KEY:
+            reply = await _call_openai(messages, llm_model, settings.OPENAI_API_KEY)
+        else:
+            # Fallback на любой доступный
+            if settings.GEMINI_API_KEY:
+                reply = await _call_gemini(messages, settings.GEMINI_MODEL, settings.GEMINI_API_KEY)
+            elif settings.OPENAI_API_KEY:
+                reply = await _call_openai(messages, settings.OPENAI_MODEL, settings.OPENAI_API_KEY)
+            elif settings.GROQ_API_KEY:
+                reply = await _call_groq(messages, settings.GROQ_MODEL, settings.GROQ_API_KEY)
+            else:
                 return random.choice(FALLBACK_REPLIES)
-
-            data = response.json()
-            reply = data["choices"][0]["message"]["content"].strip()
-            return reply
-
+        return reply or random.choice(FALLBACK_REPLIES)
     except Exception as e:
-        print(f"[llm] Error: {e}")
-        import random
+        print(f"[llm] Error ({pname}): {e}")
         return random.choice(FALLBACK_REPLIES)
 
 

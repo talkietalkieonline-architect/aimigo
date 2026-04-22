@@ -12,10 +12,12 @@ import {
   adminDeleteAgent,
   adminAssignAgent,
   adminRestoreAgent,
+  adminGetLLMStatus,
   type AgentDetailOut,
   type AgentCreate,
   type AdminStats,
   type AdminUser,
+  type LLMStatus,
 } from "@/services/api";
 
 /* ══════════════════════════════════════════════════════════════
@@ -58,6 +60,7 @@ export default function AdminPage() {
 
   // Stats
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [llmStatus, setLlmStatus] = useState<LLMStatus | null>(null);
 
   // Create/Edit form
   const [form, setForm] = useState<AgentCreate>({
@@ -99,8 +102,12 @@ export default function AdminPage() {
 
   const loadStats = useCallback(async () => {
     try {
-      const data = await adminGetStats();
-      setStats(data);
+      const [statsData, llmData] = await Promise.all([
+        adminGetStats(),
+        adminGetLLMStatus(),
+      ]);
+      setStats(statsData);
+      setLlmStatus(llmData);
     } catch {}
   }, []);
 
@@ -651,6 +658,41 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <p className="text-gray-500">Загрузка...</p>
+              )}
+
+              {/* LLM Статус */}
+              <h3 className="text-lg font-semibold mt-8 mb-4">LLM Провайдеры</h3>
+              {llmStatus ? (
+                <div>
+                  {/* Активный */}
+                  <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                      <span className="text-sm font-medium text-white">Активный провайдер: <span className="text-amber-400">{llmStatus.active_provider.toUpperCase()}</span></span>
+                    </div>
+                    <p className="text-xs text-gray-400">Модель Дворецкого: <span className="text-gray-200">{llmStatus.active_model}</span></p>
+                  </div>
+
+                  {/* Все провайдеры */}
+                  <div className="grid grid-cols-3 gap-4">
+                    {Object.entries(llmStatus.providers).map(([name, info]) => (
+                      <div key={name} className={`bg-gray-900 rounded-xl p-4 border ${
+                        info.connected ? "border-green-800" : "border-gray-800"
+                      }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`w-2 h-2 rounded-full ${info.connected ? "bg-green-500" : "bg-gray-600"}`} />
+                          <span className="text-sm font-medium">{name.toUpperCase()}</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-1">Модель: <span className="text-gray-300">{info.model}</span></p>
+                        <p className="text-xs text-gray-500">Ключ: <span className={`font-mono ${info.connected ? "text-green-400" : "text-gray-600"}`}>
+                          {info.key || "не задан"}
+                        </span></p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-500">Загрузка LLM статуса...</p>
               )}
             </div>
           )}

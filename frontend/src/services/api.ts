@@ -327,6 +327,26 @@ export function adminGetStats(): Promise<AdminStats> {
   return apiFetch("/api/admin/stats");
 }
 
+/** LLM статус */
+export interface LLMProviderInfo {
+  connected: boolean;
+  key: string;
+  model: string;
+}
+export interface LLMStatus {
+  active_provider: string;
+  active_model: string;
+  default_provider: string;
+  providers: {
+    openai: LLMProviderInfo;
+    gemini: LLMProviderInfo;
+    groq: LLMProviderInfo;
+  };
+}
+export function adminGetLLMStatus(): Promise<LLMStatus> {
+  return apiFetch("/api/admin/llm-status");
+}
+
 // ═══════════════════════════════════════════════
 //  CHAT — История + отправка
 // ═══════════════════════════════════════════════

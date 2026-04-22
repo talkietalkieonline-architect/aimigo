@@ -42,6 +42,11 @@ services:
       REDIS_URL: "redis://redis:6379/0"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
       OPENAI_MODEL: "${OPENAI_MODEL:-gpt-4o-mini}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.0-flash}"
+      GROQ_API_KEY: "${GROQ_API_KEY:-}"
+      GROQ_MODEL: "${GROQ_MODEL:-llama-3.3-70b-versatile}"
+      DEFAULT_LLM_PROVIDER: "${DEFAULT_LLM_PROVIDER:-gemini}"
       ADMIN_PHONES: '["+79214787478"]'
       DEBUG: "true"
     depends_on:

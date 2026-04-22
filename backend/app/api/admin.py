@@ -268,3 +268,48 @@ async def admin_stats(
             "total": users_total,
         },
     }
+
+
+# ═══════════════════════════════════════════════
+#  LLM СТАТУС
+# ═══════════════════════════════════════════════
+
+@router.get("/llm-status")
+async def admin_llm_status(
+    admin: User = Depends(get_admin_user),
+):
+    """LLM статус: какие провайдеры подключены, ключи, модели"""
+    from app.core.config import settings as s
+    from app.services.llm import get_active_provider
+
+    def mask_key(key: str) -> str:
+        if not key:
+            return ""
+        if len(key) <= 8:
+            return "****"
+        return key[:4] + "..." + key[-4:]
+
+    active = get_active_provider()
+
+    return {
+        "active_provider": active["name"],
+        "active_model": active["model"],
+        "default_provider": s.DEFAULT_LLM_PROVIDER,
+        "providers": {
+            "openai": {
+                "connected": bool(s.OPENAI_API_KEY),
+                "key": mask_key(s.OPENAI_API_KEY),
+                "model": s.OPENAI_MODEL,
+            },
+            "gemini": {
+                "connected": bool(s.GEMINI_API_KEY),
+                "key": mask_key(s.GEMINI_API_KEY),
+                "model": s.GEMINI_MODEL,
+            },
+            "groq": {
+                "connected": bool(s.GROQ_API_KEY),
+                "key": mask_key(s.GROQ_API_KEY),
+                "model": s.GROQ_MODEL,
+            },
+        },
+    }

@@ -26,9 +26,16 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # LLM
+    # LLM — мульти-провайдер
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.0-flash"
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+
+    # Провайдер по умолчанию для Дворецкого: openai / gemini / groq
+    DEFAULT_LLM_PROVIDER: str = "gemini"
 
     # Админка — номера телефонов админов (при регистрации получают is_admin=True)
     ADMIN_PHONES: List[str] = []
