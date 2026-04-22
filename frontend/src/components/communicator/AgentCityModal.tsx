@@ -35,11 +35,15 @@ export default function AgentCityModal({
   onClose,
   onOpenBusiness,
   onStartChat,
+  isAdmin,
+  onOpenAdmin,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onOpenBusiness?: () => void;
   onStartChat?: (agentId: number) => void;
+  isAdmin?: boolean;
+  onOpenAdmin?: () => void;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProfession, setSelectedProfession] = useState("Все");
@@ -113,6 +117,19 @@ export default function AgentCityModal({
               </p>
             </div>
             <div className="flex items-center gap-2">
+              {isAdmin && onOpenAdmin && (
+                <button
+                  onClick={() => { onClose(); onOpenAdmin(); }}
+                  className="px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all hover:scale-105"
+                  style={{
+                    background: "rgba(245,158,11,0.15)",
+                    color: "#F59E0B",
+                    border: "1px solid rgba(245,158,11,0.3)",
+                  }}
+                >
+                  Админ
+                </button>
+              )}
               {onOpenBusiness && (
                 <button
                   onClick={() => { onClose(); onOpenBusiness(); }}

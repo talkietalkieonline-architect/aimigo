@@ -165,6 +165,11 @@ export default function Home() {
           setBusinessOpen(true);
         }}
         onStartChat={openAgentChat}
+        isAdmin={isAdmin}
+        onOpenAdmin={() => {
+          setCityOpen(false);
+          window.location.href = "/admin";
+        }}
       />
 
       {/* Мои контакты */}
@@ -179,16 +184,7 @@ export default function Home() {
         onClose={() => setBusinessOpen(false)}
       />
 
-      {/* Админ: индикатор + ссылка */}
-      {isAdmin && (
-        <a
-          href="/admin"
-          className="fixed bottom-2 left-2 flex items-center gap-1 px-2 py-1 rounded-full text-[9px] transition-all hover:scale-105"
-          style={{ zIndex: 60, background: "rgba(245,158,11,0.15)", color: "#F59E0B" }}
-        >
-          ⚙ Admin
-        </a>
-      )}
+
     </div>
   );
 }
