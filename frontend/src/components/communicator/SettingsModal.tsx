@@ -21,9 +21,11 @@ const SECTIONS = [
 export default function SettingsModal({
   isOpen,
   onClose,
+  onLogout,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  onLogout?: () => void;
 }) {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [currentTheme, setCurrentTheme] = useState("noir-gold");
@@ -95,6 +97,31 @@ export default function SettingsModal({
                 <span style={{ color: "var(--text-muted)" }}>›</span>
               </button>
             ))}
+
+            {/* Кнопка выхода */}
+            <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--bg-glass-border)" }}>
+              <button
+                onClick={() => {
+                  onClose();
+                  onLogout?.();
+                }}
+                className="flex items-center gap-2.5 w-full px-4 py-3.5 rounded-xl text-left text-sm transition-all"
+                style={{ color: "var(--danger)" }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "rgba(231,76,60,0.1)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Выйти
+              </button>
+            </div>
           </div>
         ) : activeSection === "Настройка интерфейса" ? (
           <div>

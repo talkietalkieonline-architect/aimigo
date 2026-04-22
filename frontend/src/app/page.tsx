@@ -20,7 +20,7 @@ import BusinessDashboardModal from "@/components/communicator/BusinessDashboardM
 type AppScreen = "splash" | "login" | "communicator";
 
 export default function Home() {
-  const { isLoggedIn, isAdmin, login } = useAuth();
+  const { isLoggedIn, isAdmin, login, logout } = useAuth();
   const [screen, setScreen] = useState<AppScreen>("splash");
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
@@ -139,6 +139,10 @@ export default function Home() {
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+        onLogout={() => {
+          logout();
+          setScreen("login");
+        }}
       />
 
       {/* Мои агенты */}
