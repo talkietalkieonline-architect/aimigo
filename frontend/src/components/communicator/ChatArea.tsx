@@ -349,16 +349,20 @@ function MessageBubble({ msg, userSide }: { msg: ChatMessage; userSide: boolean 
 export default function ChatArea({
   messages,
   isTyping,
+  typingName = "Дворецкий",
   topPad = 80,
   bottomPad = 130,
   autoSpeak = false,
+  agentInfo,
 }: {
   messages: ChatMessage[];
   isTyping: boolean;
+  typingName?: string;
   topPad?: number;
   bottomPad?: number;
   /** Автоозвучка ответов агентов (голосовой режим) */
   autoSpeak?: boolean;
+  agentInfo?: { id: number; name: string; color: string; greeting?: string } | null;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevMsgCountRef = useRef(messages.length);
@@ -429,7 +433,7 @@ export default function ChatArea({
                   <div className={`flex flex-col ${userSide ? "items-start" : "items-end"}`} style={{ maxWidth: "70%" }}>
                     {/* Имя агента (справа) */}
                     {!userSide && (
-                      <span className="text-[10px] mb-0.5 mr-1" style={{ color: "var(--accent)" }}>
+                      <span className="text-[10px] mb-0.5 mr-1" style={{ color: msg.color || "var(--accent)" }}>
                         {msg.name}
                       </span>
                     )}
@@ -443,9 +447,9 @@ export default function ChatArea({
                     <div
                       className="w-7 h-7 rounded-full shrink-0 ml-2 mt-1 flex items-center justify-center text-[9px] font-bold"
                       style={{
-                        background: "rgba(212, 168, 67, 0.12)",
-                        border: "1.5px solid rgba(212, 168, 67, 0.3)",
-                        color: "var(--accent)",
+                        background: `${msg.color || "var(--accent)"}1F`,
+                        border: `1.5px solid ${msg.color || "var(--accent)"}55`,
+                        color: msg.color || "var(--accent)",
                       }}
                     >
                       {msg.name[0]}
@@ -459,7 +463,7 @@ export default function ChatArea({
             {isTyping && (
               <div className="flex justify-end animate-fade-in">
                 <div className="flex flex-col items-end">
-                  <span className="text-[10px] mb-0.5 mr-1" style={{ color: "var(--accent)" }}>Дворецкий</span>
+                  <span className="text-[10px] mb-0.5 mr-1" style={{ color: agentInfo?.color || "var(--accent)" }}>{typingName}</span>
                   <div
                     className="rounded-2xl px-3.5 py-2 text-sm"
                     style={{
@@ -479,12 +483,12 @@ export default function ChatArea({
                 <div
                   className="w-7 h-7 rounded-full shrink-0 ml-2 mt-1 flex items-center justify-center text-[9px] font-bold"
                   style={{
-                    background: "rgba(212, 168, 67, 0.12)",
-                    border: "1.5px solid rgba(212, 168, 67, 0.3)",
-                    color: "var(--accent)",
+                    background: agentInfo ? `${agentInfo.color}1F` : "rgba(212, 168, 67, 0.12)",
+                    border: `1.5px solid ${agentInfo?.color || "rgba(212, 168, 67, 0.3)"}55`,
+                    color: agentInfo?.color || "var(--accent)",
                   }}
                 >
-                  Д
+                  {typingName[0]}
                 </div>
               </div>
           )}

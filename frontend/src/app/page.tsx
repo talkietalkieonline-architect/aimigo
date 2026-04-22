@@ -36,7 +36,22 @@ export default function Home() {
   const [micActive, setMicActive] = useState(false);
 
   // Чат — через хук (WebSocket + offline fallback)
-  const { messages, isTyping, isConnected, sendMessage, attachMedia } = useChat("general");
+  const {
+    messages, isTyping, typingName, isConnected,
+    sendMessage, attachMedia, room, setRoom, agentInfo,
+  } = useChat("general");
+
+  /** Открыть личный чат с агентом */
+  const openAgentChat = useCallback((agentId: number) => {
+    setRoom(`agent-${agentId}`);
+    setAgentsOpen(false);
+    setCityOpen(false);
+  }, [setRoom]);
+
+  /** Вернуться в общую комнату */
+  const backToGeneral = useCallback(() => {
+    setRoom("general");
+  }, [setRoom]);
 
   const closeLeft = useCallback(() => setLeftOpen(false), []);
   const closeRight = useCallback(() => setRightOpen(false), []);
@@ -63,7 +78,12 @@ export default function Home() {
       <Particles />
 
       {/* Верхняя панель */}
-      <TopBar tickerActive={true} onHeightChange={setTopBarH} />
+      <TopBar
+        tickerActive={!agentInfo}
+        onHeightChange={setTopBarH}
+        agentInfo={agentInfo}
+        onBackToGeneral={backToGeneral}
+      />
 
       {/* Индикатор подключения к серверу */}
       {isConnected && (
@@ -94,7 +114,15 @@ export default function Home() {
       <RightPanel isOpen={rightOpen} onClose={closeRight} />
 
       {/* Центральная область чата */}
-      <ChatArea messages={messages} isTyping={isTyping} topPad={topBarH} bottomPad={bottomBarH} autoSpeak={micActive} />
+      <ChatArea
+        messages={messages}
+        isTyping={isTyping}
+        typingName={typingName}
+        topPad={topBarH}
+        bottomPad={bottomBarH}
+        autoSpeak={micActive}
+        agentInfo={agentInfo}
+      />
 
       {/* Нижняя панель — ввод + кнопки */}
       <BottomBar
@@ -121,6 +149,7 @@ export default function Home() {
           setAgentsOpen(false);
           setCityOpen(true);
         }}
+        onStartChat={openAgentChat}
       />
 
       {/* Город Агентов */}
@@ -131,6 +160,7 @@ export default function Home() {
           setCityOpen(false);
           setBusinessOpen(true);
         }}
+        onStartChat={openAgentChat}
       />
 
       {/* Мои контакты */}

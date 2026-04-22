@@ -81,21 +81,35 @@ function apiMsgToChat(msg: MessageOut): ChatMessage {
   };
 }
 
+/** Информация об агенте в комнате agent-{id} */
+export interface AgentRoomInfo {
+  id: number;
+  name: string;
+  profession: string;
+  brand: string;
+  color: string;
+  greeting?: string;
+}
+
 interface UseChatResult {
   messages: ChatMessage[];
   isTyping: boolean;
+  typingName: string;
   isConnected: boolean;
   sendMessage: (text: string) => void;
   attachMedia: (file: File) => void;
   room: string;
   setRoom: (room: string) => void;
+  agentInfo: AgentRoomInfo | null;
 }
 
 export function useChat(initialRoom: string = "general"): UseChatResult {
   const [messages, setMessages] = useState<ChatMessage[]>(() => [buildWelcome(false)]);
   const [isTyping, setIsTyping] = useState(false);
+  const [typingName, setTypingName] = useState("Дворецкий");
   const [isConnected, setIsConnected] = useState(false);
   const [room, setRoom] = useState(initialRoom);
+  const [agentInfo, setAgentInfo] = useState<AgentRoomInfo | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const msgCounter = useRef(100);
   const reconnectTimer = useRef<NodeJS.Timeout | null>(null);
@@ -120,18 +134,36 @@ export function useChat(initialRoom: string = "general"): UseChatResult {
           sender: data.sender_type as "user" | "butler" | "agent",
           name: data.sender_name,
           text: data.text,
-          color: data.sender_type === "user" ? "" : "var(--accent)",
+          color: data.sender_type === "user" ? "" : (data.agent_color || "var(--accent)"),
           timestamp: new Date(data.created_at),
         };
         setMessages((prev) => [...prev, chatMsg]);
         setIsTyping(false);
       } else if (data.type === "typing") {
-        // Агент/Дворецкий печатает...
+        setTypingName(data.sender_name || "Дворецкий");
         setIsTyping(true);
       } else if (data.type === "typing_stop") {
         setIsTyping(false);
+      } else if (data.type === "user_joined" && data.agent_info) {
+        // Комната агента — получаем инфо
+        const info = data.agent_info as AgentRoomInfo;
+        setAgentInfo(info);
+        // Приветствие агента — если есть greeting и нет истории
+        if (info.greeting) {
+          setMessages((prev) => {
+            // Не добавляем если уже есть сообщения (история загрузилась)
+            if (prev.length > 0) return prev;
+            return [{
+              id: "agent-greeting",
+              sender: "agent" as const,
+              name: info.name,
+              text: info.greeting!,
+              color: info.color || "var(--accent)",
+              timestamp: new Date(),
+            }];
+          });
+        }
       }
-      // Можно обработать user_joined, user_left
     });
 
     if (!ws) return;
@@ -161,22 +193,32 @@ export function useChat(initialRoom: string = "general"): UseChatResult {
 
   // Загрузить историю из API
   const loadHistory = useCallback(async () => {
+    const isAgentRoom = room.startsWith("agent-");
     try {
       const history = await getChatHistory(room);
-      const welcome = buildWelcome(history.length > 0);
-      if (history.length > 0) {
-        const chatMessages = history.map(apiMsgToChat);
-        setMessages([welcome, ...chatMessages]);
+      const chatMessages = history.map(apiMsgToChat);
+      if (isAgentRoom) {
+        // Для комнаты агента: нет welcome Дворецкого, показываем только историю
+        setMessages(chatMessages);
       } else {
-        setMessages([welcome]);
+        const welcome = buildWelcome(history.length > 0);
+        setMessages(history.length > 0 ? [welcome, ...chatMessages] : [welcome]);
       }
     } catch {
+      if (isAgentRoom) {
+        setMessages([]);
+      }
       // API недоступен — оставляем welcome message
     }
   }, [room]);
 
   // Инициализация при смене комнаты
   useEffect(() => {
+    // Сбрасываем agentInfo при смене комнаты
+    if (!room.startsWith("agent-")) {
+      setAgentInfo(null);
+    }
+    setIsTyping(false);
     loadHistory();
     connectWS();
 
@@ -212,6 +254,29 @@ export function useChat(initialRoom: string = "general"): UseChatResult {
     }, delay);
   }, []);
 
+  // Offline: ответ агента (когда сервер недоступен)
+  const offlineAgentReply = useCallback(() => {
+    const info = agentInfo;
+    if (!info) { offlineButlerReply(); return; }
+    setIsTyping(true);
+    setTypingName(info.name);
+    const delay = 800 + Math.random() * 1500;
+    setTimeout(() => {
+      setIsTyping(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: String(msgCounter.current++),
+          sender: "agent" as const,
+          name: info.name,
+          text: `Я ${info.name}, ${info.profession.toLowerCase()}. Сейчас я в офлайн-режиме, но скоро подключусь к AI и смогу помочь!`,
+          color: info.color || "var(--accent)",
+          timestamp: new Date(),
+        },
+      ]);
+    }, delay);
+  }, [agentInfo, offlineButlerReply]);
+
   // Отправить сообщение
   const sendMessage = useCallback(
     (text: string) => {
@@ -232,10 +297,15 @@ export function useChat(initialRoom: string = "general"): UseChatResult {
       } else {
         // Offline — локально
         setMessages((prev) => [...prev, userMsg]);
-        offlineButlerReply();
+        // Если в комнате агента — ответ агента, иначе Дворецкий
+        if (room.startsWith("agent-")) {
+          offlineAgentReply();
+        } else {
+          offlineButlerReply();
+        }
       }
     },
-    [isConnected, offlineButlerReply]
+    [isConnected, offlineButlerReply, offlineAgentReply, room]
   );
 
   // Прикрепить медиа
@@ -256,20 +326,26 @@ export function useChat(initialRoom: string = "general"): UseChatResult {
       setMessages((prev) => [...prev, mediaMsg]);
 
       if (!isConnected) {
-        offlineButlerReply();
+        if (room.startsWith("agent-")) {
+          offlineAgentReply();
+        } else {
+          offlineButlerReply();
+        }
       }
       // TODO: загрузка файла на сервер через API
     },
-    [isConnected, offlineButlerReply]
+    [isConnected, offlineButlerReply, offlineAgentReply, room]
   );
 
   return {
     messages,
     isTyping,
+    typingName,
     isConnected,
     sendMessage,
     attachMedia,
     room,
     setRoom,
+    agentInfo,
   };
 }

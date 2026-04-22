@@ -34,10 +34,12 @@ export default function AgentCityModal({
   isOpen,
   onClose,
   onOpenBusiness,
+  onStartChat,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onOpenBusiness?: () => void;
+  onStartChat?: (agentId: number) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProfession, setSelectedProfession] = useState("Все");
@@ -321,7 +323,7 @@ export default function AgentCityModal({
                         }
                         if (action === "Начать чат") {
                           setSelectedAgent(null);
-                          onClose();
+                          onStartChat?.(agentDetails.id);
                         }
                       }}
                     >

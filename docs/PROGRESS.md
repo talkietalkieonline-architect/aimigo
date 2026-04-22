@@ -321,22 +321,85 @@ backend/app/
   services/llm.py                    ← UPDATED: _build_agent_prompt(), манеры+знания
 ```
 
-### Что следующее (Сессия 9)
+### Сессия 9 (Июнь 2025)
+- [x] **Личный чат с агентом** — основная фича сессии:
+  - Нажатие «Начать чат» в Городе Агентов / Моих агентах → переключение комнаты на `agent-{id}`
+  - WS комната `agent-{id}` — агент отвечает через `get_agent_reply()` с полным персонажем
+  - Манеры, знания, system_prompt агента влияют на ответы
+  - История диалога с каждым агентом сохраняется отдельно
+  - Offline fallback: локальный ответ агента
+- [x] **TopBar — заголовок агента:**
+  - В комнате агента: аватар + имя + профессия + online индикатор
+  - Кнопка «Назад» → возврат в общую комнату
+  - Бегущая строка ЭФИР скрывается в личном чате
+- [x] **ChatArea — цвета агентов:**
+  - Аватары и имена агентов в их цвете (не только золотой)
+  - Индикатор «печатает...» показывает имя агента (не только Дворецкий)
+- [x] **Приветствие агента:**
+  - При первом открытии чата — greeting агента как первое сообщение
+  - Инфо об агенте приходит через WS event `user_joined.agent_info`
+- [x] **Backend `_agent_reply()`** — новая функция:
+  - Загрузка агента из БД при подключении к комнате `agent-{id}`
+  - Typing индикатор с именем агента
+  - LLM-ответ через `get_agent_reply()` с полным персонажем
+  - Ответ сохраняется в БД с sender_agent_id + agent_color
+  - Валидация: если агент не найден — WS закрывается с кодом 4004
+- [x] **useChat хук — полный рефакторинг:**
+  - `typingName` — кто печатает (агент / Дворецкий)
+  - `agentInfo` — информация об агенте в текущей комнате
+  - `setRoom()` — переключение комнат (сброс состояния, переподключение WS)
+  - Offline fallback: отдельные ответы для агентов и Дворецкого
+  - Для комнаты агента: нет welcome Дворецкого, только история + greeting
+- [x] **Build чист** (TypeScript + Next.js)
+
+### Архитектура после Сессии 9
+```
+frontend/src/
+  hooks/useChat.ts                   ← UPDATED: AgentRoomInfo, typingName, setRoom, agentInfo, offline agent reply
+  app/page.tsx                       ← UPDATED: openAgentChat(), backToGeneral(), room management
+  components/communicator/
+    TopBar.tsx                       ← UPDATED: заголовок агента + кнопка «Назад»
+    ChatArea.tsx                     ← UPDATED: typingName, agentInfo, цветные аватары
+    AgentCityModal.tsx               ← UPDATED: onStartChat → открывает личный чат
+    MyAgentsModal.tsx                ← UPDATED: onStartChat → открывает личный чат
+
+backend/app/
+  websocket/chat_ws.py               ← UPDATED: _agent_reply(), _parse_agent_room(), _load_agent()
+                                       Комната agent-{id} → агент отвечает с полным персонажем
+```
+
+### Поток «Личный чат с агентом»
+```
+Пользователь нажимает «Начать чат» в каталоге
+  → page.tsx: openAgentChat(agentId)
+    → useChat: setRoom("agent-5")
+      → WS переподключается к /ws/chat/agent-5
+      → Backend: загружает Agent(id=5) из БД
+      → WS broadcast: user_joined + agent_info {name, color, greeting}
+        → Frontend: setAgentInfo(), показывает greeting
+      → TopBar: заголовок агента + кнопка «Назад»
+
+Пользователь пишет сообщение
+  → WS send: {text: "Привет!"}
+  → Backend: сохраняет в БД + broadcast message
+  → Backend: asyncio.create_task(_agent_reply(room, agent, text))
+    → typing индикатор с именем агента
+    → get_agent_reply(манеры, знания, промпт)
+    → typing_stop + broadcast ответ с agent_color
+  → Frontend: показывает ответ в цвете агента
+```
+
+### Что следующее (Сессия 10)
 
 **1. Docker compose up** — проверка полной связки (PostgreSQL + Redis + Backend + Frontend)
 
-**2. Личный чат с агентом:**
-   - Нажатие на агента → личная комната чата
-   - WS комната `agent-{id}` → LLM отвечает через get_agent_reply()
-   - Манеры и знания агента влияют на ответы
-
-**3. Подписка + оплата:**
+**2. Подписка + оплата:**
    - Модель подписки в БД
    - Кнопка «Подписаться» → создание личного агента
 
-**4. Микрофон — проверка на реальном устройстве**
+**3. Микрофон** — проверка на реальном устройстве
 
-**5. Деплой** — VPS / Vercel + Railway
+**4. Деплой** — VPS / Vercel + Railway
 
 ---
 

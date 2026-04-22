@@ -26,10 +26,12 @@ export default function MyAgentsModal({
   isOpen,
   onClose,
   onOpenCity,
+  onStartChat,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onOpenCity: () => void;
+  onStartChat?: (agentId: number) => void;
 }) {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [personalAgents, setPersonalAgents] = useState<AgentFullOut[]>([]);
@@ -111,10 +113,17 @@ export default function MyAgentsModal({
               <button
                 key={action}
                 className="w-full text-left px-4 py-3 rounded-xl text-sm mb-1 transition-all"
-                style={{ color: action === "Убрать из Моих агентов" ? "var(--danger)" : "var(--text-primary)" }}
+                style={{ color: action === "Убрать из Моих агентов" ? "var(--danger)" : action === "Начать чат" ? "var(--accent)" : "var(--text-primary)" }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-glass-hover)")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                onClick={() => { setSelectedAgent(null); onClose(); }}
+                onClick={() => {
+                  if (action === "Начать чат" && menu) {
+                    const numId = parseInt(menu.id, 10);
+                    if (!isNaN(numId)) onStartChat?.(numId);
+                  }
+                  setSelectedAgent(null);
+                  onClose();
+                }}
               >
                 {action}
               </button>
