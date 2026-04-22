@@ -1,4 +1,4 @@
-которых создан магазин скорректировать """API авторизации — только SMS (SMS-only, без пароля)"""
+"""API авторизации — только SMS (SMS-only, без пароля)"""
 import random
 from datetime import datetime, timedelta, timezone
 
@@ -80,6 +80,10 @@ async def verify_sms(body: VerifySMSRequest, db: AsyncSession = Depends(get_db))
     if not user.aimigo_link:
         user.aimigo_link = f"user-{user.id}"
 
+    # Назначение админа по номеру из ADMIN_PHONES
+    if settings.ADMIN_PHONES and user.phone in settings.ADMIN_PHONES:
+        user.is_admin = True
+
     await db.flush()
 
     # Сразу выдаём JWT — без пароля
@@ -88,4 +92,5 @@ async def verify_sms(body: VerifySMSRequest, db: AsyncSession = Depends(get_db))
         access_token=token,
         user_id=user.id,
         display_name=user.display_name,
+        is_admin=user.is_admin,
     )
