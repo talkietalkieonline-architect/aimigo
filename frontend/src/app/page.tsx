@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/hooks/useChat";
 import SplashScreen from "@/components/auth/SplashScreen";
@@ -55,6 +55,20 @@ export default function Home() {
 
   const closeLeft = useCallback(() => setLeftOpen(false), []);
   const closeRight = useCallback(() => setRightOpen(false), []);
+
+  // Подхват Aimigo Link: если в localStorage есть aimigo_open_agent — открываем чат
+  useEffect(() => {
+    if (screen === "communicator") {
+      const pendingAgent = localStorage.getItem("aimigo_open_agent");
+      if (pendingAgent) {
+        localStorage.removeItem("aimigo_open_agent");
+        const agentId = parseInt(pendingAgent, 10);
+        if (!isNaN(agentId)) {
+          openAgentChat(agentId);
+        }
+      }
+    }
+  }, [screen, openAgentChat]);
 
   // Заставка — после неё проверяем сессию через AuthContext
   if (screen === "splash") {

@@ -40,7 +40,8 @@ class Settings(BaseSettings):
     # Админка — номера телефонов админов (при регистрации получают is_admin=True)
     ADMIN_PHONES: List[str] = []
 
-    # CORS
+    # CORS (в production nginx проксирует — CORS не нужен,
+    # но оставляем для прямого доступа к API)
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001"]
 
     class Config:

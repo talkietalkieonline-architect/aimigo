@@ -2,7 +2,7 @@
 
 ---
 
-## Текущий статус: MVP — UI КОММУНИКАТОРА
+## Текущий статус: PRODUCTION-READY — готов к деплою
 
 ### Сессия 1 (Июнь 2025)
 - [x] Обсуждение концепции и функционала
@@ -437,19 +437,97 @@ backend/app/
 - API совместим с OpenAI — наш `_call_openai()` работает без изменений
 - Нулевая зависимость от внешних API, полный контроль
 
-### Что следующее (Сессия 10)
+### Сессия 10 (Июнь 2025)
+- [x] **Production деплой — полный комплект:**
+  - `Dockerfile` для фронтенда (multi-stage: deps → build → standalone runner)
+  - `docker-compose.prod.yml` — 6 сервисов: postgres, redis, backend, frontend, nginx, certbot
+  - `nginx/` — reverse proxy + SSL + WebSocket + gzip + security headers
+  - `deploy.sh` — автоматический скрипт первого деплоя (проверка .env, SSL, запуск)
+  - `env.template` — шаблон переменных окружения
+  - `docs/DEPLOY.md` — полная инструкция по деплою
+  - Healthchecks для всех сервисов
+  - Certbot автообновление SSL
+- [x] **api.ts — production-ready WebSocket:**
+  - `connectChat()` автоопределение: wss:// для HTTPS, ws:// для dev
+  - API_BASE пустая строка в prod (тот же домен, nginx проксирует)
+  - `NEXT_PUBLIC_API_URL` проверка `!== undefined` (пустая строка валидна)
+- [x] **Aimigo Links — публичные ссылки на агентов:**
+  - `GET /api/agents/link/{slug}` — публичный API (без авторизации)
+  - `/a/[slug]` — Next.js динамический роут
+  - Красивая карточка агента: аватар, имя, профессия, рейтинг, описание, приветствие
+  - Кнопка "Начать чат" → localStorage intent → переход на / → открытие чата
+  - Кнопка "Скопировать ссылку" (clipboard)
+  - Страница 404 если агент не найден
+- [x] **page.tsx — подхват Aimigo Link:**
+  - useEffect проверяет `aimigo_open_agent` в localStorage
+  - Автооткрытие чата с агентом после авторизации
+- [x] **next.config.ts** — `output: "standalone"` (для Docker)
+- [x] **Build чист** (TypeScript + Next.js)
 
-**1. Деплой на VPS** — Docker Compose, nginx, HTTPS, домен
+### Архитектура после Сессии 10
+```
+│
+├── docker-compose.prod.yml       ← NEW: production compose (6 сервисов)
+├── deploy.sh                     ← NEW: скрипт деплоя (авто-SSL)
+├── env.template                  ← NEW: шаблон .env
+├── nginx/nginx.conf              ← NEW: основной конфиг
+├── nginx/conf.d/default.conf     ← NEW: виртуальный хост (SSL + proxy)
+│
+frontend/
+  Dockerfile                        ← NEW: multi-stage build
+  .dockerignore                     ← NEW
+  next.config.ts                    ← UPDATED: output: "standalone"
+  src/services/api.ts               ← UPDATED: production WS, API_BASE
+  src/app/page.tsx                  ← UPDATED: Aimigo Link intent
+  src/app/a/[slug]/page.tsx         ← NEW: публичная страница агента
+
+backend/
+  app/api/agents.py                 ← UPDATED: GET /api/agents/link/{slug}
+
+docs/
+  DEPLOY.md                         ← NEW: инструкция по деплою
+```
+
+### Production архитектура
+```
+Internet
+  │
+  ├─ :80  (HTTP)  ─→ Nginx ─→ redirect to :443
+  │
+  └─ :443 (HTTPS) ─→ Nginx
+                      ├─ /api/*    ─→ Backend (FastAPI :8000)
+                      ├─ /ws/*     ─→ Backend (WebSocket)
+                      ├─ /a/{slug} ─→ Frontend (Next.js :3000) ─ Aimigo Link
+                      └─ /*        ─→ Frontend (Next.js :3000)
+```
+
+### Aimigo Links — поток
+```
+Пользователь открывает https://aimigo.ru/a/tim-adidas
+  → Next.js: /a/[slug] роут
+  → fetch /api/agents/link/tim-adidas (без авторизации)
+  → Красивая карточка агента
+  → Кнопка "Начать чат"
+    → localStorage.setItem("aimigo_open_agent", agentId)
+    → router.push("/")
+    → [авторизация если нужна]
+    → page.tsx подхватывает intent
+    → openAgentChat(agentId)
+    → Личный чат с агентом
+```
+
+### Что следующее (Сессия 11)
+
+**1. Деплой на реальный VPS** — запустить deploy.sh, получить SSL
 
 **2. Подключить Gemini** — бесплатный ключ, Дворецкий заговорит через AI
 
 **3. Первый кейс** — один реальный бизнес, один агент, реальные клиенты
 
-**4. Микрофон** — проверка на реальном устройстве (требует HTTPS)
+**4. Микрофон** — проверка на реальном устройстве (теперь есть HTTPS!)
 
-**5. Дизайн-ревизия** — обновить UI коммуникатора (см. заметки по дизайну ниже)
-
-**6. Aimigo Links** — публичные ссылки на агентов: aimigo.ru/a/tim-adidas
+**ПОЗЖЕ (после рабочего продукта):**
+- Дизайн-ревизия — когда всё заговорит и будет первый кейс (см. заметки по дизайну ниже)
 
 ---
 

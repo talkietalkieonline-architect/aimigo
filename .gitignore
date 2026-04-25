@@ -1,1 +1,22 @@
-node_modules/\n.next/\n.DS_Store\n__pycache__/\n*.pyc\n.env
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+
+# Secrets
+.env
+
+# SSL / Certbot
+certbot/
+
+# Docker volumes
+pgdata/
+redisdata/

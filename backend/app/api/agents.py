@@ -93,6 +93,18 @@ async def my_agents(
     return [AgentDetailOut.model_validate(a) for a in agents]
 
 
+@router.get("/link/{slug}")
+async def get_agent_by_link(slug: str, db: AsyncSession = Depends(get_db)):
+    """Публичная карточка агента по aimigo_link (для Aimigo Links)"""
+    result = await db.execute(
+        select(Agent).where(Agent.aimigo_link == slug, Agent.is_active == True)
+    )
+    agent = result.scalar_one_or_none()
+    if not agent:
+        raise HTTPException(404, "Агент не найден")
+    return AgentOut.model_validate(agent)
+
+
 @router.get("/{agent_id}", response_model=AgentOut)
 async def get_agent(agent_id: int, db: AsyncSession = Depends(get_db)):
     """Карточка агента"""

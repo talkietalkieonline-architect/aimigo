@@ -3,7 +3,13 @@
  * Единая точка взаимодействия фронтенда с бэкендом
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+/**
+ * Production: NEXT_PUBLIC_API_URL="" → relative URLs (nginx проксирует /api/ и /ws/)
+ * Dev: NEXT_PUBLIC_API_URL не задан → fallback на http://localhost:8000
+ */
+const API_BASE = process.env.NEXT_PUBLIC_API_URL !== undefined
+  ? process.env.NEXT_PUBLIC_API_URL
+  : "http://localhost:8000";
 
 /** Хранение JWT токена */
 let authToken: string | null = null;
@@ -413,14 +419,24 @@ export function connectChat(room: string, onMessage: (msg: any) => void): WebSoc
   const token = getToken();
   if (!token) return null;
 
-  const wsBase = API_BASE.replace("http", "ws");
-  const ws = new WebSocket(`${wsBase}/ws/chat/${room}?token=${token}`);
+  // В production: тот же хост, wss://; в dev: ws://localhost:8000
+  let wsUrl: string;
+  if (API_BASE && API_BASE !== "") {
+    const wsBase = API_BASE.replace(/^http/, "ws");
+    wsUrl = `${wsBase}/ws/chat/${room}?token=${token}`;
+  } else if (typeof window !== "undefined") {
+    const proto = window.location.protocol === "https:" ? "wss" : "ws";
+    wsUrl = `${proto}://${window.location.host}/ws/chat/${room}?token=${token}`;
+  } else {
+    return null;
+  }
+  const ws = new WebSocket(wsUrl);
 
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
       onMessage(data);
-    } catch {}
+    } catch { /* ignore parse errors */ }
   };
 
   return ws;
