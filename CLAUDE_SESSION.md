@@ -91,9 +91,10 @@ docker compose -f docker-compose.prod.yml up -d backend --force-recreate
 
 ## GitHub
 
-- **Репо:** https://github.com/talkietalkieonline-architect/aimigo.git
-- **Токен (в remote URL):** обновлять если протухнет — спросить у пользователя
+- **Репо:** git@github.com:talkietalkieonline-architect/aimigo.git
+- **Аутентификация:** SSH-ключ (на сервере /root/.ssh/id_ed25519, добавлен в GitHub)
 - **Ветка:** main
+- **Токен НЕ используется** — только SSH. Если на Mac нет SSH-ключа для GitHub — пушить через сервер
 
 ### Схема работы
 
